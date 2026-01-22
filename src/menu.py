@@ -20,26 +20,54 @@ def init_menu(width, height):
     global particles, buttons
     
     particles = []
-    for _ in range(30):
-        p = {
+    for _ in range(50):
+        particles.append({
             'x': random.randint(0, width),
             'y': random.randint(0, height),
-            'radius': random.randint(1, 3),
-            'speed_y': random.uniform(-0.3, -0.1),
-            'speed_x': random.uniform(-0.1, 0.1),
-            'brightness': random.randint(30, 80),
-            'pulse_speed': random.uniform(0.02, 0.05),
+            'radius': random.randint(1, 2),
+            'speed_y': random.uniform(-0.2, -0.05),
+            'speed_x': random.uniform(-0.05, 0.05),
+            'brightness': random.randint(20, 50),
+            'pulse_speed': random.uniform(0.01, 0.03),
             'pulse_offset': random.uniform(0, math.pi * 2),
             'width': width,
-            'height': height
-        }
-        particles.append(p)
+            'height': height,
+            'layer': 0
+        })
+        
+    for _ in range(40):
+        particles.append({
+            'x': random.randint(0, width),
+            'y': random.randint(0, height),
+            'radius': random.randint(2, 4),
+            'speed_y': random.uniform(-0.5, -0.2),
+            'speed_x': random.uniform(-0.1, 0.1),
+            'brightness': random.randint(40, 100),
+            'pulse_speed': random.uniform(0.03, 0.06),
+            'pulse_offset': random.uniform(0, math.pi * 2),
+            'width': width,
+            'height': height,
+            'layer': 1
+        })
+        
+    for _ in range(20):
+        particles.append({
+            'x': random.randint(0, width),
+            'y': random.randint(0, height),
+            'radius': random.randint(4, 7),
+            'speed_y': random.uniform(-1.0, -0.4),
+            'speed_x': random.uniform(-0.2, 0.2),
+            'brightness': random.randint(80, 150),
+            'pulse_speed': random.uniform(0.05, 0.1),
+            'pulse_offset': random.uniform(0, math.pi * 2),
+            'width': width,
+            'height': height,
+            'layer': 2
+        })
     
     button_width = 250
     button_height = 45
     button_x = (width - button_width) // 2
-    
-   
     total_buttons_height = (4 * 45) + (3 * 60)
     center_y_available = height * 0.6  
     start_y = int(center_y_available - total_buttons_height / 2 + height * 0.1)
@@ -116,31 +144,43 @@ def draw_menu_decorations(surface, width, height):
     decor_color = (25, 35, 45)
     fill_color = (18, 28, 38)
     
-    drawEllipse(surface, 150, 300, 60, 30, decor_color)
-    flood_fill_iterativo(surface, 150, 300, fill_color, decor_color)
+    x1, y1 = int(width * 0.15), int(height * 0.45)
+    drawEllipse(surface, x1, y1, int(width * 0.06), int(height * 0.04), decor_color)
+    flood_fill_iterativo(surface, x1, y1, fill_color, decor_color)
     
-    drawEllipse(surface, width - 150, 350, 50, 25, decor_color)
-    flood_fill_iterativo(surface, width - 150, 350, fill_color, decor_color)
+    x2, y2 = int(width * 0.1), int(height * 0.72)
+    drawEllipse(surface, x2, y2, int(width * 0.04), int(height * 0.03), decor_color)
+    flood_fill_iterativo(surface, x2, y2, fill_color, decor_color)
+
+    x3, y3 = int(width * 0.85), int(height * 0.5)
+    drawEllipse(surface, x3, y3, int(width * 0.05), int(height * 0.035), decor_color)
+    flood_fill_iterativo(surface, x3, y3, fill_color, decor_color)
     
-    drawEllipse(surface, 100, height - 200, 40, 20, decor_color)
-    flood_fill_iterativo(surface, 100, height - 200, fill_color, decor_color)
+    x4, y4 = int(width * 0.9), int(height * 0.75)
+    drawEllipse(surface, x4, y4, int(width * 0.045), int(height * 0.03), decor_color)
+    flood_fill_iterativo(surface, x4, y4, fill_color, decor_color)
     
-    drawEllipse(surface, width - 100, height - 180, 45, 22, decor_color)
-    flood_fill_iterativo(surface, width - 100, height - 180, fill_color, decor_color)
+    cx1, cy1 = int(width * 0.08), int(height * 0.35)
+    drawCircle(surface, cx1, cy1, int(width * 0.015), decor_color)
+    flood_fill_iterativo(surface, cx1, cy1, fill_color, decor_color)
     
-    drawCircle(surface, 80, 250, 15, decor_color)
-    flood_fill_iterativo(surface, 80, 250, fill_color, decor_color)
+    cx2, cy2 = int(width * 0.92), int(height * 0.4)
+    drawCircle(surface, cx2, cy2, int(width * 0.012), decor_color)
+    flood_fill_iterativo(surface, cx2, cy2, fill_color, decor_color)
     
-    drawCircle(surface, width - 80, 280, 12, decor_color)
-    flood_fill_iterativo(surface, width - 80, 280, fill_color, decor_color)
+    cx3, cy3 = int(width * 0.12), int(height * 0.8)
+    drawCircle(surface, cx3, cy3, int(width * 0.01), decor_color)
+    flood_fill_iterativo(surface, cx3, cy3, fill_color, decor_color)
     
-    drawCircle(surface, 120, height - 150, 10, decor_color)
-    flood_fill_iterativo(surface, 120, height - 150, fill_color, decor_color)
+    lx_start = int(width * 0.05)
+    ly_start = int(height * 0.5)
+    DrawLineBresenham(surface, lx_start, ly_start, lx_start + 50, ly_start + 50, decor_color)
+    DrawLineBresenham(surface, lx_start + 50, ly_start + 50, lx_start + 30, ly_start + 100, decor_color)
     
-    DrawLineBresenham(surface, 50, 350, 100, 400, decor_color)
-    DrawLineBresenham(surface, 100, 400, 80, 450, decor_color)
-    DrawLineBresenham(surface, width - 50, 370, width - 100, 420, decor_color)
-    DrawLineBresenham(surface, width - 100, 420, width - 70, 470, decor_color)
+    lx_end = int(width * 0.95)
+    ly_end = int(height * 0.52)
+    DrawLineBresenham(surface, lx_end, ly_end, lx_end - 50, ly_end + 50, decor_color)
+    DrawLineBresenham(surface, lx_end - 50, ly_end + 50, lx_end - 20, ly_end + 100, decor_color)
 
 
 def draw_title_gradient(surface, text, x, y, font, color_top, color_bottom):
@@ -188,7 +228,8 @@ def draw_menu(surface, width, height, title_font, button_font):
     
     sub_color = (30, 40, 50)
     sub_detail = (20, 30, 40)
-    drawSubmarine(surface, width // 2, height - 100, 0, sub_color, sub_detail)
+    sub_y = int(height * 0.88)
+    drawSubmarine(surface, width // 2, sub_y, 0, sub_color, sub_detail)
 
 
 def handle_menu_click(mouse_x, mouse_y):
@@ -207,7 +248,7 @@ def init_instructions(width, height):
     button_height = 40
     instructions_back_btn = {
         'x': (width - button_width) // 2,
-        'y': height - 80,
+        'y': int(height * 0.85),
         'w': button_width,
         'h': button_height,
         'text': "VOLTAR",
@@ -221,7 +262,7 @@ def init_credits(width, height):
     button_height = 40
     credits_back_btn = {
         'x': (width - button_width) // 2,
-        'y': height - 80,
+        'y': int(height * 0.85),
         'w': button_width,
         'h': button_height,
         'text': "VOLTAR",
@@ -241,7 +282,7 @@ def update_credits(mouse_x, mouse_y):
 
 def draw_instructions(surface, width, height, title_font, button_font):
     title = title_font.render("INSTRUCOES", True, DIM_WHITE)
-    title_rect = title.get_rect(center=(width // 2, 80))
+    title_rect = title.get_rect(center=(width // 2, int(height * 0.15)))
     surface.blit(title, title_rect)
     
     info_font = pygame.font.Font(None, 32)
@@ -250,15 +291,17 @@ def draw_instructions(surface, width, height, title_font, button_font):
         "CIMA - Acelerar para frente",
         "BAIXO - Acelerar para tras",
         "ESQUERDA/DIREITA - Girar",
+        "ESPAÇO - Ativar sonar",
         "ESC - Voltar ao menu"
     ]
     
-    y_pos = 180
+    y_pos = int(height * 0.3)
+    line_spacing = int(height * 0.08)
     for line in instructions:
         text = info_font.render(line, True, GHOSTLY_TEAL_BRIGHT)
         text_rect = text.get_rect(center=(width // 2, y_pos))
         surface.blit(text, text_rect)
-        y_pos += 45
+        y_pos += line_spacing
     
     if instructions_back_btn:
         draw_button(surface, instructions_back_btn, button_font)
@@ -266,7 +309,7 @@ def draw_instructions(surface, width, height, title_font, button_font):
 
 def draw_credits(surface, width, height, title_font, button_font):
     title = title_font.render("CREDITOS", True, DIM_WHITE)
-    title_rect = title.get_rect(center=(width // 2, 80))
+    title_rect = title.get_rect(center=(width // 2, int(height * 0.15)))
     surface.blit(title, title_rect)
     
     info_font = pygame.font.Font(None, 32)
@@ -280,13 +323,14 @@ def draw_credits(surface, width, height, title_font, button_font):
         
     ]
     
-    y_pos = 180
+    y_pos = int(height * 0.3)
+    line_spacing = int(height * 0.07)
     for line in credits_list:
-        color = GHOSTLY_TEAL_BRIGHT if line else DIM_WHITE
+        color = GHOSTLY_TEAL_BRIGHT if line and "Jogo desenvolvido" in line else DIM_WHITE
         text = info_font.render(line, True, color)
         text_rect = text.get_rect(center=(width // 2, y_pos))
         surface.blit(text, text_rect)
-        y_pos += 40
+        y_pos += line_spacing
     
     if credits_back_btn:
         draw_button(surface, credits_back_btn, button_font)

@@ -157,8 +157,8 @@ def drawPolygon(surface, points, color):
 
 def scanline_fill(surface, points, fill_color):
     ys = [p[1] for p in points]
-    y_min = min(ys)
-    y_max = max(ys)
+    y_min = int(min(ys))
+    y_max = int(max(ys))
 
     n = len(points)
 

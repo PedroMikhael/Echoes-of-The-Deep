@@ -3,7 +3,57 @@ from primitives import (
     drawPolygon, drawCircle, DrawLineBresenham, 
     scanline_fill, drawEllipse
 )
-from transforms import get_rotation_matrix, get_translation_matrix, mat_mul, apply_transform
+from transforms import get_rotation_matrix, get_translation_matrix, mat_mul, apply_transform, get_scale_matrix
+
+
+def init_sonar():
+    return {
+        'active': False,
+        'timer': 0,
+        'waves': []
+    }
+
+
+def activate_sonar(sonar):
+    if not sonar['active']:
+        sonar['active'] = True
+        sonar['timer'] = 180  
+
+
+def update_sonar(sonar, x, y):
+    if sonar['active']:
+        sonar['timer'] -= 1
+        if sonar['timer'] % 15 == 0: 
+            sonar['waves'].append({
+                'scale': 0.1,
+                'alpha': 1.0,
+                'x': x,
+                'y': y
+            })
+        
+        if sonar['timer'] <= 0:
+            sonar['active'] = False
+    
+    for wave in sonar['waves']:
+        wave['scale'] += 0.04
+        wave['alpha'] -= 0.012
+    
+    sonar['waves'] = [w for w in sonar['waves'] if w['alpha'] > 0]
+
+
+def draw_sonar(surface, sonar, color):
+    base_radius = 50
+    
+    for wave in sonar['waves']:
+        scale_matrix = get_scale_matrix(wave['scale'], wave['scale'])
+        current_radius = int(base_radius * scale_matrix[0][0])
+        r = int(color[0] * wave['alpha'])
+        g = int(color[1] * wave['alpha'])
+        b = int(color[2] * wave['alpha'])
+        
+        wave_color = (max(0, r), max(0, g), max(0, b))
+        
+        drawCircle(surface, int(wave['x']), int(wave['y']), current_radius, wave_color)
 
 
 def get_submarine_parts():

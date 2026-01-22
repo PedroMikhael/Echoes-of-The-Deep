@@ -3,8 +3,6 @@ Módulo de Transformações Geométricas
 Funções para manipulação de matrizes e transformações 2D.
 """
 import math
-
-
 def mat_mul(A, B):
     """ Multiplies two 3x3 matrices. """
     C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]]
@@ -39,10 +37,6 @@ def get_scale_matrix(sx, sy):
     ]
 
 def apply_transform(points, matrix):
-    """ 
-    Applies a transformation matrix to a list of points.
-    Returns the new list of transformed points.
-    """
     new_points = []
     for x, y in points:
         vec = [x, y, 1]

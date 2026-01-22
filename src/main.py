@@ -4,9 +4,10 @@ import math
 import random
 import primitives
 from primitives import drawCircle
-from characters.submarine import drawSubmarine, drawSubmarineFilled, get_bubble_spawn_position
+from characters.submarine import drawSubmarine, drawSubmarineFilled, get_bubble_spawn_position, init_sonar, activate_sonar, update_sonar, draw_sonar
 from characters.jellyfish import create_jellyfish, update_jellyfish, draw_jellyfish_bioluminescent, check_jellyfish_collision
 from characters.tentacles import create_giant_tentacles, update_giant_tentacles, draw_giant_tentacles
+from characters.water_bomb import create_water_bomb, update_water_bomb, draw_water_bomb
 import menu
 
 OCEAN_DEEP = (15, 40, 70)
@@ -15,6 +16,10 @@ SUBMARINE_DETAIL = (50, 55, 65)
 SUBMARINE_FILL = (100, 110, 120)
 BUBBLE_COLOR = (150, 200, 230)
 TENTACLE_COLOR = (200, 80, 60)
+SONAR_COLOR = (0, 255, 200)
+BOMB_BODY = (60, 65, 70)
+BOMB_SPIKE = (40, 45, 50)
+BOMB_HIGHLIGHT = (200, 220, 255)
 
 WIDTH = 1920
 HEIGHT = 1080   
@@ -51,6 +56,7 @@ bubbles = []
 bubble_timer = 0
 
 jellyfishes = []
+water_bombs = []
 
 def create_bubble(x, y):
     return {
@@ -102,7 +108,13 @@ while True:
                         create_jellyfish(800, 300),
                         create_jellyfish(600, 500),
                     ]
+                    water_bombs = [
+                        create_water_bomb(400, -100),
+                        create_water_bomb(WIDTH - 400, -300),
+                        create_water_bomb(WIDTH // 2, -500),
+                    ]
                     giant_tentacles = create_giant_tentacles(WIDTH // 2, HEIGHT)
+                    sonar = init_sonar()
                 elif action == "INSTRUCOES":
                     game_state = GAME_STATE_INSTRUCTIONS
                 elif action == "CREDITOS":
@@ -127,6 +139,8 @@ while True:
                     game_state = GAME_STATE_MENU
                 elif game_state in [GAME_STATE_INSTRUCTIONS, GAME_STATE_CREDITS]:
                     game_state = GAME_STATE_MENU
+            if event.key == pygame.K_SPACE and game_state == GAME_STATE_PLAYING:
+                activate_sonar(sonar)
 
     if game_state == GAME_STATE_MENU:
         menu_time += 1
@@ -183,7 +197,11 @@ while True:
         for jf in jellyfishes:
             update_jellyfish(jf, WIDTH, HEIGHT)
         
+        for bomb in water_bombs:
+            update_water_bomb(bomb, HEIGHT)
+        
         update_giant_tentacles(giant_tentacles)
+        update_sonar(sonar, sub_x, sub_y)
         
         screen.fill(OCEAN_DEEP)
         
@@ -194,6 +212,11 @@ while True:
         
         for jf in jellyfishes:
             draw_jellyfish_bioluminescent(screen, jf)
+        
+        for bomb in water_bombs:
+            draw_water_bomb(screen, bomb, BOMB_BODY, BOMB_SPIKE, BOMB_HIGHLIGHT)
+        
+        draw_sonar(screen, sonar, SONAR_COLOR)
         
         drawSubmarineFilled(screen, int(sub_x), int(sub_y), sub_angle, SUBMARINE_BODY, SUBMARINE_DETAIL, SUBMARINE_FILL, propeller_angle)
     
