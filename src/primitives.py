@@ -119,35 +119,29 @@ def drawEllipsePixels(surface, center_x, center_y, x, y, color):
     setPixel(surface, center_x + x, center_y - y, color)
     setPixel(surface, center_x - x, center_y - y, color)
 
-def floodFill(surface, start_x, start_y, target_color, replacement_color):
-    try:
-        current_color = surface.get_at((start_x, start_y))
-    except IndexError:
-        return
-    
-    if current_color == replacement_color:
-        return
-    
-    if target_color is not None and current_color != target_color:
-        return
+def flood_fill_iterativo(superficie, x, y, cor_preenchimento, cor_borda):
+    largura = superficie.get_width()
+    altura = superficie.get_height()
 
-    stack = [(start_x, start_y)]
-    
-    width, height = surface.get_size()
+    pilha = [(x, y)]
 
-    while stack:
-        x, y = stack.pop()
-        
-        try:
-            if surface.get_at((x, y)) == current_color:
-                setPixel(surface, x, y, replacement_color)
-                
-                if x + 1 < width: stack.append((x + 1, y))
-                if x - 1 >= 0: stack.append((x - 1, y))
-                if y + 1 < height: stack.append((x, y + 1))
-                if y - 1 >= 0: stack.append((x, y - 1))
-        except IndexError:
-            pass
+    while pilha:
+        x, y = pilha.pop()
+
+        if not (0 <= x < largura and 0 <= y < altura):
+            continue
+
+        cor_atual = superficie.get_at((x, y))[:3]
+
+        if cor_atual == cor_borda or cor_atual == cor_preenchimento:
+            continue
+
+        setPixel(superficie, x, y, cor_preenchimento)
+
+        pilha.append((x + 1, y))
+        pilha.append((x - 1, y))
+        pilha.append((x, y + 1))
+        pilha.append((x, y - 1))
 
 def drawTriangle(surface, point1, point2, point3, color):
     DrawLineBresenham(surface, point1[0], point1[1], point2[0], point2[1], color)
@@ -206,3 +200,57 @@ def drawRect(surface, top_left_x, top_left_y, width, height, color):
     ]
     drawPolygon(surface, points, color)
 
+
+def scanline_fill_gradient(surface, points, color_top, color_bottom):
+    if not points:
+        return
+    
+    ys = [p[1] for p in points]
+    y_min = int(min(ys))
+    y_max = int(max(ys))
+    
+    if y_max == y_min:
+        return
+    
+    n = len(points)
+    
+    for y in range(y_min, y_max):
+        intersections_x = []
+        
+        for i in range(n):
+            x0, y0 = points[i]
+            x1, y1 = points[(i + 1) % n]
+            
+            if y0 == y1:
+                continue
+            
+            if y0 > y1:
+                x0, y0, x1, y1 = x1, y1, x0, y0
+            
+            if y < y0 or y >= y1:
+                continue
+            
+            x = x0 + (y - y0) * (x1 - x0) / (y1 - y0)
+            intersections_x.append(x)
+        
+        intersections_x.sort()
+        
+        t = (y - y_min) / (y_max - y_min)
+        
+        r = int(color_top[0] + (color_bottom[0] - color_top[0]) * t)
+        g = int(color_top[1] + (color_bottom[1] - color_top[1]) * t)
+        b = int(color_top[2] + (color_bottom[2] - color_top[2]) * t)
+        
+        r = max(0, min(255, r))
+        g = max(0, min(255, g))
+        b = max(0, min(255, b))
+        
+        gradient_color = (r, g, b)
+        
+        for i in range(0, len(intersections_x), 2):
+            if i + 1 < len(intersections_x):
+                x_start = int(round(intersections_x[i]))
+                x_end = int(round(intersections_x[i + 1]))
+                
+                for x in range(x_start, x_end + 1):
+                    setPixel(surface, x, y, gradient_color)
