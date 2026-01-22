@@ -4,6 +4,7 @@ import math
 import transforms
 import primitives
 from drone import drawDrone, drawDroneFilled
+import map
 
 BLUE_DARK = (10, 30, 60)
 WHITE = (255, 255, 255)
@@ -11,8 +12,8 @@ CYAN = (0, 200, 255)
 YELLOW = (255, 220, 50)
 ORANGE = (255, 150, 50)
 
-WIDTH = 800
-HEIGHT = 600   
+WIDTH = 1800
+HEIGHT = 1000   
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -54,6 +55,7 @@ while True:
     screen.fill(BLUE_DARK)
     
     drawDroneFilled(screen, int(drone_x), int(drone_y), drone_angle, YELLOW, CYAN, ORANGE)
+    map.drawMap(screen)
     
     pygame.display.flip()
     clock.tick(60)
