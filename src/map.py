@@ -76,6 +76,7 @@ def fazer_espinhos(screen, x0, y0, x1, y1, lado,tamanho=20, espacamento=25, cor=
     dx = x1 - x0
     dy = y1 - y0
     comprimento = math.hypot(dx, dy)
+    
 
     if comprimento == 0:
         return
@@ -109,16 +110,20 @@ def fazer_espinhos(screen, x0, y0, x1, y1, lado,tamanho=20, espacamento=25, cor=
         primitives.drawPolygon(screen,[base1, base2, ponta],cor)
         
 
-def fazer_magma():
-    pass
+def fazer_magma(poligono, screen):
+    n = len(poligono)
+
+    for i in range(n):
+        primitives.drawTriangle(screen, poligono[i],poligono[(i+1)%n],poligono[(i+2)%n],(255,0,0))
+        primitives.scanline_fill(screen, [poligono[i],poligono[(i+1)%n],poligono[(i+2)%n]],(155,0,0))
 
 
 
 def drawMap(screen):
     primitives.drawPolygon(screen, gerar_contorno_completo(), (0,0,0))
     primitives.scanline_fill(screen, gerar_contorno_completo(), (0,0,0))
-    primitives.drawPolygon(screen, gerar_magmaZone(), (255,0,0))
-    primitives.scanline_fill(screen, gerar_magmaZone(), (255,0,0))
+    primitives.drawPolygon(screen, gerar_magmaZone(), (0,0,0))
+    primitives.scanline_fill(screen, gerar_magmaZone(), (0,0,0))
     primitives.drawPolygon(screen, gerar_SegundoPercurso(), (0,0,0))
     primitives.scanline_fill(screen, gerar_SegundoPercurso(), (0,0,0))
     primitives.drawPolygon(screen, gerar_ArenaInimigos(), (50,50,50))
@@ -127,6 +132,13 @@ def drawMap(screen):
     primitives.scanline_fill(screen, gerar_CorredorArenaParaObjeto(), (0,0,0))
     fazer_espinhos(screen, 700,550 , 500,750, -1, tamanho=15, espacamento=30, cor=(255,255,255))
     fazer_espinhos(screen, 500, 850, 800, 650 , -1, tamanho=15, espacamento=30, cor=(255,255,255))
+    fazer_magma([(1100,200 ),(1200,150 ),(1300,100 ),(1400,200 )], screen)
+    fazer_espinhos(screen,1100,200,1400,200, 1, tamanho=15, espacamento=30, cor=(255,0,0))
+    fazer_magma([(1400, 300),(1200,400),(1150,350),(1100,300 )], screen)
+    fazer_espinhos(screen,1400,300,1100,300, 1, tamanho=15, espacamento=30, cor=(255,0,0))
+
+
+
 
 
 def retorno_zona():
