@@ -33,7 +33,7 @@ from characters.water_bomb import (
 )
 
 import menu
-import map   # <<< MAPA IMPORTADO
+import map
 
 # ---------------- CORES ----------------
 OCEAN_DEEP = (15, 40, 70)
@@ -55,6 +55,9 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Echoes of the Deep")
 clock = pygame.time.Clock()
+
+# DEBUG FPS
+SHOW_FPS = True
 
 title_font = pygame.font.Font(None, 64)
 button_font = pygame.font.Font(None, 36)
@@ -84,12 +87,22 @@ propeller_speed = 15
 # ---------------- PARTÍCULAS ----------------
 bubbles = []
 bubble_timer = 0
+MAX_BUBBLES = 120
 
 # ---------------- INIMIGOS ----------------
 jellyfishes = []
 water_bombs = []
 giant_tentacles = None
 sonar = None
+
+# ---------------- MAPA (CACHE) ----------------
+map_surface = pygame.Surface((WIDTH, HEIGHT))
+map_surface.fill((0, 0, 0))
+map.drawMap(map_surface)
+
+# ---------------- UTIL ----------------
+def is_visible(x, y, margin=200):
+    return -margin < x < WIDTH + margin and -margin < y < HEIGHT + margin
 
 # ---------------- BOLHAS ----------------
 def create_bubble(x, y):
@@ -106,7 +119,6 @@ def create_bubble(x, y):
 def update_bubble(b):
     b['y'] += b['speed_y']
     b['x'] += b['speed_x']
-    b['speed_x'] += random.uniform(-0.05, 0.05)
     b['life'] -= 1
     b['alpha'] = max(0, int(255 * (b['life'] / 120)))
     return b['life'] > 0
@@ -162,13 +174,8 @@ while True:
                     pygame.quit()
                     sys.exit()
 
-            elif game_state == GAME_STATE_INSTRUCTIONS:
-                if menu.handle_instructions_click(mouse_x, mouse_y) == "VOLTAR":
-                    game_state = GAME_STATE_MENU
-
-            elif game_state == GAME_STATE_CREDITS:
-                if menu.handle_credits_click(mouse_x, mouse_y) == "VOLTAR":
-                    game_state = GAME_STATE_MENU
+            elif game_state in (GAME_STATE_INSTRUCTIONS, GAME_STATE_CREDITS):
+                game_state = GAME_STATE_MENU
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
@@ -184,12 +191,10 @@ while True:
         menu.draw_menu(screen, WIDTH, HEIGHT, title_font, button_font)
 
     elif game_state == GAME_STATE_INSTRUCTIONS:
-        menu.update_instructions(mouse_x, mouse_y)
         screen.fill(menu.ABYSS_BLACK)
         menu.draw_instructions(screen, WIDTH, HEIGHT, title_font, button_font)
 
     elif game_state == GAME_STATE_CREDITS:
-        menu.update_credits(mouse_x, mouse_y)
         screen.fill(menu.ABYSS_BLACK)
         menu.draw_credits(screen, WIDTH, HEIGHT, title_font, button_font)
 
@@ -218,41 +223,36 @@ while True:
         if is_moving:
             propeller_angle += propeller_speed
             bubble_timer += 1
-            if bubble_timer >= 5:
+            if bubble_timer >= 8:
                 bubble_timer = 0
-                bx, by = get_bubble_spawn_position(sub_x, sub_y, sub_angle)
-                bubbles.append(create_bubble(bx, by))
+                if len(bubbles) < MAX_BUBBLES:
+                    bx, by = get_bubble_spawn_position(sub_x, sub_y, sub_angle)
+                    bubbles.append(create_bubble(bx, by))
         else:
             propeller_angle += propeller_speed * 0.2
 
         bubbles[:] = [b for b in bubbles if update_bubble(b)]
 
+        screen.blit(map_surface, (0, 0))
+
         for jf in jellyfishes:
-            update_jellyfish(jf, WIDTH, HEIGHT)
+            if is_visible(jf['x'], jf['y']):
+                update_jellyfish(jf, WIDTH, HEIGHT)
+                draw_jellyfish_bioluminescent(screen, jf)
 
         for bomb in water_bombs:
-            update_water_bomb(bomb, HEIGHT)
+            if is_visible(bomb['x'], bomb['y']):
+                update_water_bomb(bomb, HEIGHT)
+                draw_water_bomb(screen, bomb, BOMB_BODY, BOMB_SPIKE, BOMB_HIGHLIGHT)
 
         update_giant_tentacles(giant_tentacles)
-        update_sonar(sonar, sub_x, sub_y)
-
-        
-        screen.fill((0,0,0))
-
-        map.drawMap(screen)  #
-
         draw_giant_tentacles(screen, giant_tentacles, TENTACLE_COLOR)
+
+        update_sonar(sonar, sub_x, sub_y)
+        draw_sonar(screen, sonar, SONAR_COLOR)
 
         for b in bubbles:
             draw_bubble(screen, b)
-
-        for jf in jellyfishes:
-            draw_jellyfish_bioluminescent(screen, jf)
-
-        for bomb in water_bombs:
-            draw_water_bomb(screen, bomb, BOMB_BODY, BOMB_SPIKE, BOMB_HIGHLIGHT)
-
-        draw_sonar(screen, sonar, SONAR_COLOR)
 
         drawSubmarineFilled(
             screen,
@@ -264,6 +264,9 @@ while True:
             SUBMARINE_FILL,
             propeller_angle
         )
+
+    if SHOW_FPS:
+        pygame.display.set_caption(f"Echoes of the Deep | FPS: {int(clock.get_fps())}")
 
     pygame.display.flip()
     clock.tick(60)
