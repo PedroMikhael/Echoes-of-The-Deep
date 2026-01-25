@@ -4,13 +4,14 @@ from primitives import drawPolygon, drawCircle, DrawLineBresenham, drawEllipse, 
 from transforms import get_translation_matrix, apply_transform
 
 
-def create_giant_tentacles(x, y):
+def create_giant_tentacles(x, y, scale=1.0):
     return {
         'x': x,
         'y': y,
         'time': random.uniform(0, math.pi * 2),
         'wave_speed': 0.04,
-        'num_tentacles': 6
+        'num_tentacles': 6,
+        'scale': scale
     }
 
 
@@ -21,6 +22,7 @@ def update_giant_tentacles(gt):
 def get_single_tentacle_points(gt, tentacle_index, num_tentacles):
     base_x = gt['x']
     base_y = gt['y']
+    scale = gt.get('scale', 1.0)
     
     configs = [
         {'offset': -120, 'height': 320, 'width': 40, 'direction': 1, 'phase': 0},
@@ -32,9 +34,9 @@ def get_single_tentacle_points(gt, tentacle_index, num_tentacles):
     ]
     
     config = configs[tentacle_index % len(configs)]
-    offset_x = config['offset']
-    height = config['height']
-    base_width = config['width']
+    offset_x = config['offset'] * scale
+    height = config['height'] * scale
+    base_width = config['width'] * scale
     direction = config['direction']
     phase_offset = config['phase']
     
@@ -48,13 +50,13 @@ def get_single_tentacle_points(gt, tentacle_index, num_tentacles):
         
         segment_y = base_y - (height * progress)
         
-        wave1 = math.sin(gt['time'] * direction + phase_offset + progress * 4) * 50 * progress
-        wave2 = math.sin(gt['time'] * 0.7 * direction + phase_offset * 1.5 + progress * 2) * 25 * progress
+        wave1 = math.sin(gt['time'] * direction + phase_offset + progress * 4) * 50 * scale * progress
+        wave2 = math.sin(gt['time'] * 0.7 * direction + phase_offset * 1.5 + progress * 2) * 25 * scale * progress
         
         segment_x = base_x + offset_x + wave1 + wave2
         
         width = base_width * (1 - progress * 0.8)
-        width = max(width, 4)
+        width = max(width, 4 * scale)
         
         left_points.append((segment_x - width, segment_y))
         right_points.append((segment_x + width, segment_y))
@@ -68,6 +70,7 @@ def get_single_tentacle_points(gt, tentacle_index, num_tentacles):
 def get_sucker_positions(gt, tentacle_index, num_tentacles):
     base_x = gt['x']
     base_y = gt['y']
+    scale = gt.get('scale', 1.0)
     
     configs = [
         {'offset': -120, 'height': 320, 'direction': 1, 'phase': 0},
@@ -79,8 +82,8 @@ def get_sucker_positions(gt, tentacle_index, num_tentacles):
     ]
     
     config = configs[tentacle_index % len(configs)]
-    offset_x = config['offset']
-    height = config['height']
+    offset_x = config['offset'] * scale
+    height = config['height'] * scale
     direction = config['direction']
     phase_offset = config['phase']
     
@@ -91,12 +94,12 @@ def get_sucker_positions(gt, tentacle_index, num_tentacles):
         progress = 0.1 + (i / num_suckers) * 0.75
         
         segment_y = base_y - (height * progress)
-        wave1 = math.sin(gt['time'] * direction + phase_offset + progress * 4) * 50 * progress
-        wave2 = math.sin(gt['time'] * 0.7 * direction + phase_offset * 1.5 + progress * 2) * 25 * progress
+        wave1 = math.sin(gt['time'] * direction + phase_offset + progress * 4) * 50 * scale * progress
+        wave2 = math.sin(gt['time'] * 0.7 * direction + phase_offset * 1.5 + progress * 2) * 25 * scale * progress
         segment_x = base_x + offset_x + wave1 + wave2
         
-        sucker_size = int(6 * (1 - progress * 0.6))
-        sucker_size = max(sucker_size, 3)
+        sucker_size = int(6 * scale * (1 - progress * 0.6))
+        sucker_size = max(sucker_size, int(3 * scale))
         
         suckers.append((int(segment_x), int(segment_y), sucker_size))
     

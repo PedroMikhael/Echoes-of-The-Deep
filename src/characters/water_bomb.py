@@ -4,7 +4,7 @@ from primitives import drawPolygon, drawCircle, DrawLineBresenham, drawEllipse, 
 from transforms import get_rotation_matrix, get_translation_matrix, mat_mul, apply_transform
 
 
-def create_water_bomb(x, y):
+def create_water_bomb(x, y, scale=1.0):
     return {
         'x': x,
         'y': y,
@@ -13,11 +13,12 @@ def create_water_bomb(x, y):
         'wobble_phase': random.uniform(0, math.pi * 2),
         'rotation': 0,
         'rotation_speed': random.uniform(-1, 1),
-        'active': True
+        'active': True,
+        'scale': scale
     }
 
 
-def update_water_bomb(bomb, bounds_height):
+def update_water_bomb(bomb, bounds_height, is_in_map_func=None):
     if not bomb['active']:
         return
     
@@ -25,21 +26,32 @@ def update_water_bomb(bomb, bounds_height):
     bomb['wobble_phase'] += 0.05
     bomb['rotation'] += bomb['rotation_speed']
     
-    bomb['y'] += bomb['speed_y']
-    bomb['x'] += math.sin(bomb['wobble_phase']) * 0.5
+    # Movimento flutuante lateral
+    new_x = bomb['x'] + math.sin(bomb['wobble_phase']) * 0.5
     
-    if bomb['y'] > bounds_height:
-        bomb['y'] = -50
-        bomb['x'] = random.randint(100, 1800)
+    # Movimento vertical oscilante (flutua para cima e para baixo)
+    new_y = bomb['y'] + math.sin(bomb['time']) * 0.8
+    
+    # Só move se a nova posição está dentro do mapa
+    if is_in_map_func is None or is_in_map_func(new_x, new_y):
+        bomb['x'] = new_x
+        bomb['y'] = new_y
+    elif is_in_map_func is not None:
+        # Se saiu do mapa, tenta só o movimento X ou Y separadamente
+        if is_in_map_func(new_x, bomb['y']):
+            bomb['x'] = new_x
+        if is_in_map_func(bomb['x'], new_y):
+            bomb['y'] = new_y
 
 
 def get_bomb_body_points(bomb):
     pulse = 1 + math.sin(bomb['time'] * 2) * 0.03
+    scale = bomb.get('scale', 1.0)
     
     points = []
     num_points = 24
-    width = 25 * pulse
-    height = 35 * pulse
+    width = 25 * pulse * scale
+    height = 35 * pulse * scale
     
     for i in range(num_points):
         angle = (i / num_points) * math.pi * 2
@@ -54,8 +66,9 @@ def get_bomb_spikes(bomb):
     spikes = []
     num_spikes = 8
     pulse = 1 + math.sin(bomb['time'] * 2) * 0.03
-    base_radius = 30 * pulse
-    spike_length = 15 * pulse
+    scale = bomb.get('scale', 1.0)
+    base_radius = 30 * pulse * scale
+    spike_length = 15 * pulse * scale
     
     for i in range(num_spikes):
         angle = (i / num_spikes) * math.pi * 2

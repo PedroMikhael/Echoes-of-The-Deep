@@ -142,6 +142,48 @@ def drawMap(screen):
 
 def retorno_zona():
     ...        
+
+
+def get_spawn_position():
+    """Retorna a posição inicial do submarino (dentro da safe zone)"""
+    return (200, 800)
+
+
+def get_all_map_zones():
+    """Retorna todos os polígonos do mapa para verificação de colisão"""
+    return [
+        gerar_contorno_completo(),
+        gerar_magmaZone(),
+        gerar_SegundoPercurso(),
+        gerar_ArenaInimigos(),
+        gerar_CorredorArenaParaObjeto()
+    ]
+
+
+def point_in_polygon(x, y, polygon):
+    """Verifica se um ponto está dentro de um polígono usando ray casting"""
+    n = len(polygon)
+    inside = False
+    
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    
+    return inside
+
+
+def is_point_in_map(x, y):
+    """Verifica se um ponto está dentro de qualquer zona do mapa"""
+    zones = get_all_map_zones()
+    for zone in zones:
+        if point_in_polygon(x, y, zone):
+            return True
+    return False
 '''
 def spawn_zone():
     return (250, 100)   #coordenadas x e y do centro da zona de spawn
