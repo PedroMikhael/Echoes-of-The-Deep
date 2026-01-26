@@ -11,7 +11,12 @@ from characters.submarine import (
     init_sonar,
     activate_sonar,
     update_sonar,
-    draw_sonar
+    draw_sonar,
+    submarine_battery,
+    update_battery,
+    use_sonar_battery,
+    draw_battery,
+    draw_depth
 )
 
 from characters.jellyfish import (
@@ -34,6 +39,14 @@ from characters.water_bomb import (
 
 import menu
 import map
+from map import (
+    get_spawn_position,
+    is_point_in_map,
+    is_circle_in_map,
+    is_jellyfish_in_map
+)
+
+
 
 # ---------------- CORES ----------------
 OCEAN_DEEP = (15, 40, 70)
@@ -48,8 +61,21 @@ BOMB_SPIKE = (40, 45, 50)
 BOMB_HIGHLIGHT = (200, 220, 255)
 
 # ---------------- TELA ----------------
-WIDTH = 1920
-HEIGHT = 1080
+WIDTH = 1280
+HEIGHT = 720
+
+
+# ---------------- MINI MAPA ----------------
+MINIMAP_WIDTH = 220
+MINIMAP_HEIGHT = 140
+MINIMAP_MARGIN = 20
+
+MINIMAP_X = WIDTH - MINIMAP_WIDTH - MINIMAP_MARGIN
+MINIMAP_Y = MINIMAP_MARGIN
+
+MINIMAP_SCALE_X = MINIMAP_WIDTH / MAP_WIDTH
+MINIMAP_SCALE_Y = MINIMAP_HEIGHT / MAP_HEIGHT
+
 
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -83,6 +109,13 @@ sub_speed = 3
 rotation_speed = 4
 propeller_angle = 0
 propeller_speed = 15
+SUB_SCALE = 0.5  # Escala do submarino (0.5 = metade do tamanho)
+SUB_COLLISION_RADIUS = 40 * SUB_SCALE
+
+
+# ---------------- CÂMERA ----------------
+camera_x = 0
+camera_y = 0
 
 # ---------------- PARTÍCULAS ----------------
 bubbles = []
@@ -94,15 +127,25 @@ jellyfishes = []
 water_bombs = []
 giant_tentacles = None
 sonar = None
+battery = None
 
 # ---------------- MAPA (CACHE) ----------------
-map_surface = pygame.Surface((WIDTH, HEIGHT))
+MAP_WIDTH = 2000
+MAP_HEIGHT = 1200
+map_surface = pygame.Surface((MAP_WIDTH, MAP_HEIGHT))
 map_surface.fill((0, 0, 0))
 map.drawMap(map_surface)
 
 # ---------------- UTIL ----------------
 def is_visible(x, y, margin=200):
     return -margin < x < WIDTH + margin and -margin < y < HEIGHT + margin
+
+# ---------------- MINI MAPA ----------------
+def world_to_minimap(x, y):
+    mini_x = MINIMAP_X + x * MINIMAP_SCALE_X
+    mini_y = MINIMAP_Y + y * MINIMAP_SCALE_Y
+    return int(mini_x), int(mini_y)
+
 
 # ---------------- BOLHAS ----------------
 def create_bubble(x, y):
@@ -147,24 +190,38 @@ while True:
 
                 if action == "NOVO JOGO":
                     game_state = GAME_STATE_PLAYING
-                    sub_x, sub_y = WIDTH // 2, HEIGHT // 2
+                    sub_x, sub_y = get_spawn_position()
                     sub_angle = 0
                     bubbles.clear()
 
+                    # Águas-vivas em pontos estratégicos (escala 0.3 - bem menores)
                     jellyfishes = [
-                        create_jellyfish(200, 200),
-                        create_jellyfish(800, 300),
-                        create_jellyfish(600, 500),
+                        # No corredor inclinado - bloqueiam passagem
+                        create_jellyfish(450, 780, 0.3),
+                        create_jellyfish(600, 700, 0.3),
+                        # No corredor superior perto do magma
+                        create_jellyfish(850, 250, 0.25),
+                        create_jellyfish(1000, 250, 0.25),
+                        # Na arena de inimigos
+                        create_jellyfish(1100, 820, 0.3),
+                        create_jellyfish(1250, 850, 0.3),
                     ]
 
+                    # Bombas de água em pontos de passagem (escala 0.35)
                     water_bombs = [
-                        create_water_bomb(400, -100),
-                        create_water_bomb(WIDTH - 400, -300),
-                        create_water_bomb(WIDTH // 2, -500),
+                        # Corredor inclinado
+                        create_water_bomb(550, 750, 0.35),
+                        # Corredor superior
+                        create_water_bomb(800, 250, 0.35),
+                        create_water_bomb(950, 270, 0.35),
+                        # No corredor final
+                        create_water_bomb(1650, 850, 0.35),
                     ]
 
-                    giant_tentacles = create_giant_tentacles(WIDTH // 2, HEIGHT)
+                    # Tentáculos na arena de inimigos (escala 0.35, posição ajustada)
+                    giant_tentacles = create_giant_tentacles(1100, 900, 0.35)
                     sonar = init_sonar()
+                    battery = submarine_battery()
 
                 elif action == "INSTRUCOES":
                     game_state = GAME_STATE_INSTRUCTIONS
@@ -181,7 +238,9 @@ while True:
             if event.key == pygame.K_ESCAPE:
                 game_state = GAME_STATE_MENU
             if event.key == pygame.K_SPACE and game_state == GAME_STATE_PLAYING:
-                activate_sonar(sonar)
+                if battery['charge'] >= 3:  # Só ativa se tiver bateria suficiente
+                    activate_sonar(sonar)
+                    use_sonar_battery(battery)
 
     # ================= ESTADOS =================
     if game_state == GAME_STATE_MENU:
@@ -204,21 +263,32 @@ while True:
 
         if keys[pygame.K_LEFT]:
             sub_angle -= rotation_speed
+
         if keys[pygame.K_RIGHT]:
             sub_angle += rotation_speed
+
         if keys[pygame.K_UP]:
             rad = math.radians(sub_angle)
-            sub_x += math.cos(rad) * sub_speed
-            sub_y += math.sin(rad) * sub_speed
-            is_moving = True
+            new_x = sub_x + math.cos(rad) * sub_speed
+            new_y = sub_y + math.sin(rad) * sub_speed
+
+            if is_circle_in_map(new_x, new_y, SUB_COLLISION_RADIUS):
+                sub_x = new_x
+                sub_y = new_y
+                is_moving = True
+
         if keys[pygame.K_DOWN]:
             rad = math.radians(sub_angle)
-            sub_x -= math.cos(rad) * sub_speed
-            sub_y -= math.sin(rad) * sub_speed
-            is_moving = True
+            new_x = sub_x - math.cos(rad) * sub_speed
+            new_y = sub_y - math.sin(rad) * sub_speed
 
-        sub_x = max(80, min(WIDTH - 80, sub_x))
-        sub_y = max(80, min(HEIGHT - 80, sub_y))
+            if is_circle_in_map(new_x, new_y, SUB_COLLISION_RADIUS):
+                sub_x = new_x
+                sub_y = new_y
+                is_moving = True
+
+        
+
 
         if is_moving:
             propeller_angle += propeller_speed
@@ -233,37 +303,103 @@ while True:
 
         bubbles[:] = [b for b in bubbles if update_bubble(b)]
 
-        screen.blit(map_surface, (0, 0))
+        # Calcula offset da câmera (submarino no centro)
+        camera_x = sub_x - WIDTH // 2
+        camera_y = sub_y - HEIGHT // 2
+
+        # Desenha o mapa com offset da câmera
+        screen.fill((0, 0, 0))
+        screen.blit(map_surface, (-camera_x, -camera_y))
+
+        # ---------- MINI MAPA ----------
+        pygame.draw.rect(
+            screen,
+            (10, 20, 35),
+            (MINIMAP_X, MINIMAP_Y, MINIMAP_WIDTH, MINIMAP_HEIGHT)
+        )
+
+        pygame.draw.rect(
+            screen,
+            (80, 120, 180),
+            (MINIMAP_X, MINIMAP_Y, MINIMAP_WIDTH, MINIMAP_HEIGHT),
+            2
+        )
+        # ---------- SUBMARINO NO MINI MAPA ----------
+        mini_sub_x, mini_sub_y = world_to_minimap(sub_x, sub_y)
+
+        pygame.draw.circle(
+            screen,
+            (255, 255, 0),
+            (mini_sub_x, mini_sub_y),
+            4
+        )
+
+
 
         for jf in jellyfishes:
-            if is_visible(jf['x'], jf['y']):
-                update_jellyfish(jf, WIDTH, HEIGHT)
-                draw_jellyfish_bioluminescent(screen, jf)
+            jf_screen_x = jf['x'] - camera_x
+            jf_screen_y = jf['y'] - camera_y
+            if is_visible(jf_screen_x, jf_screen_y):
+                update_jellyfish(jf, MAP_WIDTH, MAP_HEIGHT, is_jellyfish_in_map)
+                # Desenha com offset
+                jf_copy = jf.copy()
+                jf_copy['x'] = jf_screen_x
+                jf_copy['y'] = jf_screen_y
+                draw_jellyfish_bioluminescent(screen, jf_copy)
+
+                
 
         for bomb in water_bombs:
-            if is_visible(bomb['x'], bomb['y']):
-                update_water_bomb(bomb, HEIGHT)
-                draw_water_bomb(screen, bomb, BOMB_BODY, BOMB_SPIKE, BOMB_HIGHLIGHT)
+            bomb_screen_x = bomb['x'] - camera_x
+            bomb_screen_y = bomb['y'] - camera_y
+            if is_visible(bomb_screen_x, bomb_screen_y):
+                update_water_bomb(bomb, MAP_HEIGHT, is_circle_in_map)
+                bomb_copy = bomb.copy()
+                bomb_copy['x'] = bomb_screen_x
+                bomb_copy['y'] = bomb_screen_y
+                draw_water_bomb(screen, bomb_copy, BOMB_BODY, BOMB_SPIKE, BOMB_HIGHLIGHT)
 
         update_giant_tentacles(giant_tentacles)
-        draw_giant_tentacles(screen, giant_tentacles, TENTACLE_COLOR)
+        tentacles_copy = {
+            'x': giant_tentacles['x'] - camera_x,
+            'y': giant_tentacles['y'] - camera_y,
+            'time': giant_tentacles['time'],
+            'wave_speed': giant_tentacles['wave_speed'],
+            'num_tentacles': giant_tentacles['num_tentacles'],
+            'scale': giant_tentacles.get('scale', 1.0)
+        }
+        draw_giant_tentacles(screen, tentacles_copy, TENTACLE_COLOR)
 
-        update_sonar(sonar, sub_x, sub_y)
+        # Sonar na posição do submarino (centro da tela)
+        update_sonar(sonar, WIDTH // 2, HEIGHT // 2)
         draw_sonar(screen, sonar, SONAR_COLOR)
 
         for b in bubbles:
-            draw_bubble(screen, b)
+            b_screen = b.copy()
+            b_screen['x'] = b['x'] - camera_x
+            b_screen['y'] = b['y'] - camera_y
+            draw_bubble(screen, b_screen)
 
+        # Submarino sempre no centro da tela
         drawSubmarineFilled(
             screen,
-            int(sub_x),
-            int(sub_y),
+            WIDTH // 2,
+            HEIGHT // 2,
             sub_angle,
             SUBMARINE_BODY,
             SUBMARINE_DETAIL,
             SUBMARINE_FILL,
-            propeller_angle
+            propeller_angle,
+            SUB_SCALE
         )
+
+        # Atualiza e desenha a bateria (por último para ficar por cima)
+        update_battery(battery)
+        battery_height = draw_battery(screen, battery, 20, 20)
+        
+        # Desenha a profundidade embaixo da bateria
+        depth = sub_y
+        draw_depth(screen, depth, 20, 20 + battery_height + 10)
 
     if SHOW_FPS:
         pygame.display.set_caption(f"Echoes of the Deep | FPS: {int(clock.get_fps())}")

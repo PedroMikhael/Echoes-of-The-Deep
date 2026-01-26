@@ -162,10 +162,14 @@ def get_propeller_blades(propeller_angle):
     return blades
 
 
-def get_transform_matrix(x, y, angle):
+def get_transform_matrix(x, y, angle, scale=1.0):
+    from transforms import get_scale_matrix
+    scale_mat = get_scale_matrix(scale, scale)
     rotation = get_rotation_matrix(angle)
     translation = get_translation_matrix(x, y)
-    return mat_mul(translation, rotation)
+    # Primeiro escala, depois rotaciona, depois translada
+    temp = mat_mul(rotation, scale_mat)
+    return mat_mul(translation, temp)
 
 
 def transform_point(cx, cy, matrix):
@@ -174,9 +178,9 @@ def transform_point(cx, cy, matrix):
     return transformed[0]
 
 
-def drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angle=0):
+def drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angle=0, scale=1.0):
     parts = get_submarine_parts()
-    matrix = get_transform_matrix(x, y, angle)
+    matrix = get_transform_matrix(x, y, angle, scale)
     
     body = apply_transform(parts['body'], matrix)
     drawPolygon(surface, body, body_color)
@@ -218,6 +222,7 @@ def drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angl
     for name, (cx, cy, radius) in circles.items():
         final_x, final_y = transform_point(cx, cy, matrix)
         final_x, final_y = int(final_x), int(final_y)
+        scaled_radius = int(radius * scale)
         
         if 'window' in name:
             if 'inner' in name:
@@ -231,12 +236,12 @@ def drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angl
         else:
             color = detail_color
         
-        drawCircle(surface, final_x, final_y, radius, color)
+        drawCircle(surface, final_x, final_y, scaled_radius, color)
 
 
-def drawSubmarineFilled(surface, x, y, angle, body_color, detail_color, fill_color, propeller_angle=0):
+def drawSubmarineFilled(surface, x, y, angle, body_color, detail_color, fill_color, propeller_angle=0, scale=1.0):
     parts = get_submarine_parts()
-    matrix = get_transform_matrix(x, y, angle)
+    matrix = get_transform_matrix(x, y, angle, scale)
     
     body = apply_transform(parts['body'], matrix)
     body_int = [(int(px), int(py)) for px, py in body]
@@ -262,7 +267,7 @@ def drawSubmarineFilled(surface, x, y, angle, body_color, detail_color, fill_col
     fin_bottom_int = [(int(px), int(py)) for px, py in fin_bottom]
     scanline_fill(surface, fin_bottom_int, fill_color)
     
-    drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angle)
+    drawSubmarine(surface, x, y, angle, body_color, detail_color, propeller_angle, scale)
 
 
 def get_bubble_spawn_position(sub_x, sub_y, sub_angle):
@@ -270,3 +275,116 @@ def get_bubble_spawn_position(sub_x, sub_y, sub_angle):
     spawn_x = sub_x - math.cos(rad) * 85
     spawn_y = sub_y - math.sin(rad) * 85
     return spawn_x, spawn_y
+
+def submarine_battery():
+    return {
+        'x': 0,
+        'y': 0,
+        'width': 100,
+        'height': 10,
+        'charge': 100,
+        'timer': 0,  
+    }
+
+
+def update_battery(battery):
+    """Atualiza a bateria - descarga 1% a cada 2 segundos (120 frames a 60fps)"""
+    battery['timer'] += 1
+    if battery['timer'] >= 120: 
+        battery['timer'] = 0
+        battery['charge'] = max(0, battery['charge'] - 1)
+    return battery['charge'] > 0 
+
+def use_sonar_battery(battery):
+    """Desconta 3% da bateria ao usar o sonar"""
+    battery['charge'] = max(0, battery['charge'] - 3)
+    return battery['charge'] > 0 
+
+def draw_battery(surface, battery, x, y):
+    """Desenha a bateria vertical estilo ícone"""
+    from primitives import drawPolygon, scanline_fill
+    import pygame
+    
+    bar_width = 40
+    bar_height = 80
+    terminal_width = 16
+    terminal_height = 8
+    border_thickness = 4
+    terminal_x = x + (bar_width - terminal_width) // 2
+    terminal = [
+        (terminal_x, y),
+        (terminal_x + terminal_width, y),
+        (terminal_x + terminal_width, y + terminal_height),
+        (terminal_x, y + terminal_height)
+    ]
+    drawPolygon(surface, terminal, (60, 60, 60))
+    scanline_fill(surface, terminal, (60, 60, 60))
+    
+    body_y = y + terminal_height
+    body = [
+        (x, body_y),
+        (x + bar_width, body_y),
+        (x + bar_width, body_y + bar_height),
+        (x, body_y + bar_height)
+    ]
+    drawPolygon(surface, body, (40, 40, 40))
+    scanline_fill(surface, body, (40, 40, 40))
+    
+    inner_margin = border_thickness
+    inner = [
+        (x + inner_margin, body_y + inner_margin),
+        (x + bar_width - inner_margin, body_y + inner_margin),
+        (x + bar_width - inner_margin, body_y + bar_height - inner_margin),
+        (x + inner_margin, body_y + bar_height - inner_margin)
+    ]
+    drawPolygon(surface, inner, (200, 200, 200))
+    scanline_fill(surface, inner, (200, 200, 200))
+    
+    num_segments = 4
+    segment_gap = 3
+    inner_height = bar_height - (2 * inner_margin)
+    segment_height = (inner_height - (num_segments - 1) * segment_gap) // num_segments
+    
+    segments_on = int((battery['charge'] / 100) * num_segments + 0.5)
+    
+    # Cor baseada na carga
+    if battery['charge'] > 50:
+        color = (0, 180, 80)  # Verde
+    elif battery['charge'] > 25:
+        color = (220, 180, 0)  # Amarelo
+    else:
+        color = (200, 50, 50)  # Vermelho
+    
+    for i in range(num_segments):
+        segment_index = num_segments - 1 - i 
+        seg_y = body_y + inner_margin + i * (segment_height + segment_gap)
+        
+        if segment_index < segments_on:
+            seg = [
+                (x + inner_margin + 2, seg_y),
+                (x + bar_width - inner_margin - 2, seg_y),
+                (x + bar_width - inner_margin - 2, seg_y + segment_height),
+                (x + inner_margin + 2, seg_y + segment_height)
+            ]
+            drawPolygon(surface, seg, color)
+            scanline_fill(surface, seg, color)
+    
+    drawPolygon(surface, body, (60, 60, 60))
+    
+    # Desenha a porcentagem ao lado da bateria
+    font = pygame.font.Font(None, 32)
+    percent_text = f"{int(battery['charge'])}%"
+    text_surface = font.render(percent_text, True, color)
+    surface.blit(text_surface, (x + bar_width + 8, y + terminal_height + bar_height // 2 - 10))
+    
+    return terminal_height + bar_height
+
+
+def draw_depth(surface, depth, x, y):
+    """Desenha o indicador de profundidade"""
+    import pygame
+    
+    font = pygame.font.Font(None, 28)
+    depth_text = f"{int(depth)}m"
+    text_surface = font.render(depth_text, True, (200, 200, 200))
+    surface.blit(text_surface, (x, y))

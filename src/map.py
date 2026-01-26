@@ -142,6 +142,90 @@ def drawMap(screen):
 
 def retorno_zona():
     ...        
+
+
+def get_spawn_position():
+    """Retorna a posição inicial do submarino (dentro da safe zone)"""
+    return (200, 800)
+
+
+def get_all_map_zones():
+    """Retorna todos os polígonos do mapa para verificação de colisão"""
+    return [
+        gerar_contorno_completo(),
+        gerar_magmaZone(),
+        gerar_SegundoPercurso(),
+        gerar_ArenaInimigos(),
+        gerar_CorredorArenaParaObjeto()
+    ]
+
+
+def point_in_polygon(x, y, polygon):
+    """Verifica se um ponto está dentro de um polígono usando ray casting"""
+    n = len(polygon)
+    inside = False
+    
+    j = n - 1
+    for i in range(n):
+        xi, yi = polygon[i]
+        xj, yj = polygon[j]
+        
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    
+    return inside
+
+
+def is_point_in_map(x, y):
+    """Verifica se um ponto está dentro de qualquer zona do mapa"""
+    zones = get_all_map_zones()
+    for zone in zones:
+        if point_in_polygon(x, y, zone):
+            return True
+    return False
+
+def is_point_in_main_contour(x, y):
+    return point_in_polygon(x, y, gerar_contorno_completo())
+
+
+def is_circle_in_main_contour(x, y, radius, samples=24):
+    for i in range(samples):
+        angle = 2 * math.pi * i / samples
+        px = x + math.cos(angle) * radius
+        py = y + math.sin(angle) * radius
+
+        if not is_point_in_main_contour(px, py):
+            return False
+
+    return True
+
+
+def is_circle_in_map(x, y, radius, samples=32):
+    """
+    Verifica se TODO o círculo está dentro do mapa
+    testando pontos ao redor do contorno
+    """
+    for i in range(samples):
+        angle = 2 * math.pi * i / samples
+        px = x + math.cos(angle) * radius
+        py = y + math.sin(angle) * radius
+
+        if not is_point_in_map(px, py):
+            return False
+
+    return True
+
+
+def is_jellyfish_in_map(x, y, margin=30):
+    """
+    Garante que a água-viva fique dentro do mapa
+    usando uma margem de segurança
+    """
+    return is_point_in_map(x, y)
+
+
+
 '''
 def spawn_zone():
     return (250, 100)   #coordenadas x e y do centro da zona de spawn

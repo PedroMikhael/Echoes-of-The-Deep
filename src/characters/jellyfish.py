@@ -2,9 +2,11 @@ import math
 import random
 from primitives import drawPolygon, drawCircle, DrawLineBresenham, drawEllipse, scanline_fill
 from transforms import get_rotation_matrix, get_translation_matrix, mat_mul, apply_transform
+from map import is_circle_in_main_contour
 
 
-def create_jellyfish(x, y):
+
+def create_jellyfish(x, y, scale=1.0):
     return {
         'x': x,
         'y': y,
@@ -16,11 +18,13 @@ def create_jellyfish(x, y):
         'pulse_speed': 0.08,
         'tentacle_phase': random.uniform(0, math.pi * 2),
         'direction_timer': 0,
-        'direction_interval': random.randint(120, 240)
+        'direction_interval': random.randint(120, 240),
+        'scale': scale,
+        'radius': 35 * scale
     }
 
 
-def update_jellyfish(jf, bounds_width, bounds_height):
+def update_jellyfish(jf, bounds_width, bounds_height, is_in_map_func=None):
     jf['time'] += 0.02
     jf['pulse'] += jf['pulse_speed']
     jf['tentacle_phase'] += 0.05
@@ -29,27 +33,47 @@ def update_jellyfish(jf, bounds_width, bounds_height):
     if jf['direction_timer'] >= jf['direction_interval']:
         jf['direction_timer'] = 0
         jf['direction_interval'] = random.randint(120, 240)
-        margin = 100
-        jf['target_x'] = random.randint(margin, bounds_width - margin)
-        jf['target_y'] = random.randint(margin, bounds_height - margin)
+        # Tenta encontrar um novo alvo dentro do mapa
+        for _ in range(10):  # Tenta 10 vezes
+            margin = 100
+            new_target_x = random.randint(margin, bounds_width - margin)
+            new_target_y = random.randint(margin, bounds_height - margin)
+            if is_in_map_func is None or is_in_map_func(new_target_x, new_target_y):
+                jf['target_x'] = new_target_x
+                jf['target_y'] = new_target_y
+                break
     
     dx = jf['target_x'] - jf['x']
     dy = jf['target_y'] - jf['y']
     dist = math.sqrt(dx * dx + dy * dy)
     
     if dist > 5:
-        jf['x'] += (dx / dist) * jf['speed']
-        jf['y'] += (dy / dist) * jf['speed']
+        new_x = jf['x'] + (dx / dist) * jf['speed']
+        new_y = jf['y'] + (dy / dist) * jf['speed']
+        # Só move se a nova posição está dentro do mapa
+        if is_circle_in_main_contour(new_x, new_y, jf['radius']):
+            jf['x'] = new_x
+            jf['y'] = new_y
+        else:
+            # Rebote suave
+            jf['target_x'] = jf['x'] + random.randint(-100, 100)
+            jf['target_y'] = jf['y'] + random.randint(-100, 100)
+
     
-    jf['y'] += math.sin(jf['time']) * 0.3
+    # Movimento de flutuação também verifica o mapa
+    float_y = jf['y'] + math.sin(jf['time']) * 0.3
+    if is_circle_in_main_contour(jf['x'], float_y, jf['radius']):
+        jf['y'] = float_y
+
 
 
 def get_dome_outline(jf):
     pulse_scale = 1 + math.sin(jf['pulse']) * 0.08
+    scale = jf.get('scale', 1.0)
     
     points = []
-    dome_width = 50 * pulse_scale
-    dome_height = 65 * pulse_scale
+    dome_width = 50 * pulse_scale * scale
+    dome_height = 65 * pulse_scale * scale
     
     for i in range(25):
         t = i / 24
@@ -59,7 +83,7 @@ def get_dome_outline(jf):
         points.append((px, py))
     
     num_waves = 8
-    wave_depth = 8 * pulse_scale
+    wave_depth = 8 * pulse_scale * scale
     for i in range(num_waves + 1):
         t = i / num_waves
         x = dome_width - (2 * dome_width * t)
@@ -96,16 +120,17 @@ def get_dome_ribs(jf):
 
 def get_tentacle_points(jf, tentacle_index, num_tentacles):
     pulse_scale = 1 + math.sin(jf['pulse']) * 0.08
-    dome_width = 50 * pulse_scale
+    scale = jf.get('scale', 1.0)
+    dome_width = 50 * pulse_scale * scale
     
     spacing = (dome_width * 1.6) / (num_tentacles - 1) if num_tentacles > 1 else 0
     start_x = -dome_width * 0.8 + spacing * tentacle_index
-    start_y = 5
+    start_y = 5 * scale
     
     points = [(start_x, start_y)]
     
     num_segments = 12
-    segment_length = 10
+    segment_length = 10 * scale
     
     phase_offset = tentacle_index * 0.7 + jf['tentacle_phase']
     base_curve = (tentacle_index - num_tentacles / 2) * 0.15
@@ -115,7 +140,7 @@ def get_tentacle_points(jf, tentacle_index, num_tentacles):
     
     for seg in range(num_segments):
         progress = seg / num_segments
-        wave_amplitude = 12 * (1 - progress * 0.3)
+        wave_amplitude = 12 * scale * (1 - progress * 0.3)
         wave = math.sin(phase_offset + seg * 0.6) * wave_amplitude
         
         current_x += wave * 0.25 + base_curve * 2
