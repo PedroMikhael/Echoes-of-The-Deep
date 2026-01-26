@@ -37,11 +37,18 @@ from characters.water_bomb import (
     draw_water_bomb
 )
 
+from characters.research_capsule import (
+    create_research_capsule,
+    update_research_capsule,
+    draw_research_capsule,
+    check_capsule_collision,
+    collect_capsule
+)
+
 import menu
 import map
 from map import get_spawn_position, is_point_in_map
 
-# ---------------- CORES ----------------
 OCEAN_DEEP = (15, 40, 70)
 SUBMARINE_BODY = (80, 90, 100)
 SUBMARINE_DETAIL = (50, 55, 65)
@@ -53,7 +60,6 @@ BOMB_BODY = (60, 65, 70)
 BOMB_SPIKE = (40, 45, 50)
 BOMB_HIGHLIGHT = (200, 220, 255)
 
-# ---------------- TELA ----------------
 WIDTH = 1280
 HEIGHT = 720
 
@@ -62,13 +68,11 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Echoes of the Deep")
 clock = pygame.time.Clock()
 
-# DEBUG FPS
 SHOW_FPS = True
 
 title_font = pygame.font.Font(None, 64)
 button_font = pygame.font.Font(None, 36)
 
-# ---------------- MENU ----------------
 menu.init_menu(WIDTH, HEIGHT)
 menu.init_instructions(WIDTH, HEIGHT)
 menu.init_credits(WIDTH, HEIGHT)
@@ -77,11 +81,11 @@ GAME_STATE_MENU = "menu"
 GAME_STATE_PLAYING = "playing"
 GAME_STATE_INSTRUCTIONS = "instructions"
 GAME_STATE_CREDITS = "credits"
+GAME_STATE_VICTORY = "victory"
 
 game_state = GAME_STATE_MENU
 menu_time = 0
 
-# ---------------- SUBMARINO ----------------
 sub_x = WIDTH // 2
 sub_y = HEIGHT // 2
 sub_angle = 0
@@ -89,36 +93,78 @@ sub_speed = 3
 rotation_speed = 4
 propeller_angle = 0
 propeller_speed = 15
-SUB_SCALE = 0.5  # Escala do submarino (0.5 = metade do tamanho)
+SUB_SCALE = 0.5
 
-# ---------------- CÂMERA ----------------
 camera_x = 0
 camera_y = 0
 
-# ---------------- PARTÍCULAS ----------------
 bubbles = []
 bubble_timer = 0
 MAX_BUBBLES = 120
 
-# ---------------- INIMIGOS ----------------
 jellyfishes = []
 water_bombs = []
 giant_tentacles = None
 sonar = None
 battery = None
+research_capsule = None
 
-# ---------------- MAPA (CACHE) ----------------
 MAP_WIDTH = 2000
 MAP_HEIGHT = 1200
 map_surface = pygame.Surface((MAP_WIDTH, MAP_HEIGHT))
 map_surface.fill((0, 0, 0))
 map.drawMap(map_surface)
 
-# ---------------- UTIL ----------------
+BASE_POS = get_spawn_position()
+BASE_RADIUS = 90
+
+mission_start_time = 0
+SHOW_MISSION_DURATION_MS = 4500
+
+victory_start_time = 0
+VICTORY_DURATION_MS = 2500
+
+hud_font = pygame.font.Font(None, 28)
+mission_big_font = pygame.font.Font(None, 64)
+mission_small_font = pygame.font.Font(None, 28)
+victory_big_font = pygame.font.Font(None, 96)
+victory_mid_font = pygame.font.Font(None, 40)
+
+def is_in_base(px, py):
+    dx = px - BASE_POS[0]
+    dy = py - BASE_POS[1]
+    return (dx * dx + dy * dy) <= (BASE_RADIUS * BASE_RADIUS)
+
+def draw_center_overlay(surface, lines, big_font, small_font, elapsed_ms, duration_ms):
+    t = max(0.0, min(1.0, 1.0 - (elapsed_ms / duration_ms)))
+    bg_alpha = int(220 * t)
+    text_alpha = int(255 * t)
+
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, bg_alpha))
+    surface.blit(overlay, (0, 0))
+
+    y = HEIGHT // 2 - 70
+    for text, is_big in lines:
+        font = big_font if is_big else small_font
+        rendered = font.render(text, True, (255, 255, 255))
+        rendered.set_alpha(text_alpha)
+        rect = rendered.get_rect(center=(WIDTH // 2, y))
+        surface.blit(rendered, rect)
+        y += 60 if is_big else 35
+
+def draw_base_marker(surface, base_x, base_y, camera_x, camera_y):
+    sx = base_x - camera_x
+    sy = base_y - camera_y
+    pulse = abs(math.sin(pygame.time.get_ticks() * 0.004))
+    r = int(BASE_RADIUS + 10 * pulse)
+    col = (int(120 + 80 * pulse), int(200 + 30 * pulse), int(255))
+    primitives.drawCircle(surface, int(sx), int(sy), r, col)
+    primitives.drawCircle(surface, int(sx), int(sy), 6, (255, 255, 255))
+
 def is_visible(x, y, margin=200):
     return -margin < x < WIDTH + margin and -margin < y < HEIGHT + margin
 
-# ---------------- BOLHAS ----------------
 def create_bubble(x, y):
     return {
         'x': x + random.randint(-10, 10),
@@ -146,7 +192,6 @@ def draw_bubble(surface, b):
     )
     drawCircle(surface, int(b['x']), int(b['y']), b['radius'], color)
 
-# ================= LOOP PRINCIPAL =================
 while True:
     mouse_x, mouse_y = pygame.mouse.get_pos()
 
@@ -161,38 +206,32 @@ while True:
 
                 if action == "NOVO JOGO":
                     game_state = GAME_STATE_PLAYING
+
                     sub_x, sub_y = get_spawn_position()
                     sub_angle = 0
                     bubbles.clear()
+                    mission_start_time = pygame.time.get_ticks()
 
-                    # Águas-vivas em pontos estratégicos (escala 0.3 - bem menores)
                     jellyfishes = [
-                        # No corredor inclinado - bloqueiam passagem
                         create_jellyfish(450, 780, 0.3),
                         create_jellyfish(600, 700, 0.3),
-                        # No corredor superior perto do magma
                         create_jellyfish(850, 250, 0.25),
                         create_jellyfish(1000, 250, 0.25),
-                        # Na arena de inimigos
                         create_jellyfish(1100, 820, 0.3),
                         create_jellyfish(1250, 850, 0.3),
                     ]
 
-                    # Bombas de água em pontos de passagem (escala 0.35)
                     water_bombs = [
-                        # Corredor inclinado
                         create_water_bomb(550, 750, 0.35),
-                        # Corredor superior
                         create_water_bomb(800, 250, 0.35),
                         create_water_bomb(950, 270, 0.35),
-                        # No corredor final
                         create_water_bomb(1650, 850, 0.35),
                     ]
 
-                    # Tentáculos na arena de inimigos (escala 0.35, posição ajustada)
-                    giant_tentacles = create_giant_tentacles(1100, 900, 0.35)
+                    giant_tentacles = create_giant_tentacles(1100, 900, 0.5)
                     sonar = init_sonar()
                     battery = submarine_battery()
+                    research_capsule = create_research_capsule(1750, 850, 0.4)
 
                 elif action == "INSTRUCOES":
                     game_state = GAME_STATE_INSTRUCTIONS
@@ -205,15 +244,17 @@ while True:
             elif game_state in (GAME_STATE_INSTRUCTIONS, GAME_STATE_CREDITS):
                 game_state = GAME_STATE_MENU
 
+            elif game_state == GAME_STATE_VICTORY:
+                game_state = GAME_STATE_MENU
+
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_ESCAPE:
                 game_state = GAME_STATE_MENU
             if event.key == pygame.K_SPACE and game_state == GAME_STATE_PLAYING:
-                if battery['charge'] >= 3:  # Só ativa se tiver bateria suficiente
+                if battery['charge'] >= 3:
                     activate_sonar(sonar)
                     use_sonar_battery(battery)
 
-    # ================= ESTADOS =================
     if game_state == GAME_STATE_MENU:
         menu_time += 1
         menu.update_menu(menu_time, mouse_x, mouse_y)
@@ -227,6 +268,24 @@ while True:
     elif game_state == GAME_STATE_CREDITS:
         screen.fill(menu.ABYSS_BLACK)
         menu.draw_credits(screen, WIDTH, HEIGHT, title_font, button_font)
+
+    elif game_state == GAME_STATE_VICTORY:
+        screen.fill((0, 0, 0))
+
+        elapsed = pygame.time.get_ticks() - victory_start_time
+
+        bg = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        bg.fill((0, 0, 0, 200))
+        screen.blit(bg, (0, 0))
+
+        title = victory_big_font.render("VOCÊ VENCEU!", True, (255, 230, 120))
+        subtitle = victory_mid_font.render("Cápsula recuperada e entregue na base.", True, (230, 230, 230))
+
+        screen.blit(title, title.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 40)))
+        screen.blit(subtitle, subtitle.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 30)))
+
+        if elapsed >= VICTORY_DURATION_MS:
+            game_state = GAME_STATE_MENU
 
     elif game_state == GAME_STATE_PLAYING:
         keys = pygame.key.get_pressed()
@@ -266,20 +325,19 @@ while True:
 
         bubbles[:] = [b for b in bubbles if update_bubble(b)]
 
-        # Calcula offset da câmera (submarino no centro)
         camera_x = sub_x - WIDTH // 2
         camera_y = sub_y - HEIGHT // 2
 
-        # Desenha o mapa com offset da câmera
         screen.fill((0, 0, 0))
         screen.blit(map_surface, (-camera_x, -camera_y))
+
+        draw_base_marker(screen, BASE_POS[0], BASE_POS[1], camera_x, camera_y)
 
         for jf in jellyfishes:
             jf_screen_x = jf['x'] - camera_x
             jf_screen_y = jf['y'] - camera_y
             if is_visible(jf_screen_x, jf_screen_y):
                 update_jellyfish(jf, MAP_WIDTH, MAP_HEIGHT, is_point_in_map)
-                # Desenha com offset
                 jf_copy = jf.copy()
                 jf_copy['x'] = jf_screen_x
                 jf_copy['y'] = jf_screen_y
@@ -306,17 +364,29 @@ while True:
         }
         draw_giant_tentacles(screen, tentacles_copy, TENTACLE_COLOR)
 
-        # Sonar na posição do submarino (centro da tela)
+        # Cápsula de pesquisa
+        if research_capsule and not research_capsule['collected']:
+            update_research_capsule(research_capsule)
+            capsule_screen_x = research_capsule['x'] - camera_x
+            capsule_screen_y = research_capsule['y'] - camera_y
+            if is_visible(capsule_screen_x, capsule_screen_y, 150):
+                capsule_copy = research_capsule.copy()
+                capsule_copy['x'] = capsule_screen_x
+                capsule_copy['y'] = capsule_screen_y
+                draw_research_capsule(screen, capsule_copy)
+
+            if check_capsule_collision(sub_x, sub_y, research_capsule):
+                collect_capsule(research_capsule)
+
         update_sonar(sonar, WIDTH // 2, HEIGHT // 2)
         draw_sonar(screen, sonar, SONAR_COLOR)
 
         for b in bubbles:
-            b_screen = b.copy()
-            b_screen['x'] = b['x'] - camera_x
-            b_screen['y'] = b['y'] - camera_y
-            draw_bubble(screen, b_screen)
+            b_draw = b.copy()
+            b_draw['x'] = b['x'] - camera_x
+            b_draw['y'] = b['y'] - camera_y
+            draw_bubble(screen, b_draw)
 
-        # Submarino sempre no centro da tela
         drawSubmarineFilled(
             screen,
             WIDTH // 2,
@@ -329,13 +399,59 @@ while True:
             SUB_SCALE
         )
 
-        # Atualiza e desenha a bateria (por último para ficar por cima)
+        
         update_battery(battery)
         battery_height = draw_battery(screen, battery, 20, 20)
-        
-        # Desenha a profundidade embaixo da bateria
+
         depth = sub_y
         draw_depth(screen, depth, 20, 20 + battery_height + 10)
+
+        
+        if research_capsule and not research_capsule['collected']:
+            obj_text = "Objetivo: Coletar a cápsula de pesquisa"
+        else:
+            obj_text = "Objetivo: Retorne à base"
+        obj_render = hud_font.render(obj_text, True, (230, 230, 230))
+        screen.blit(obj_render, (20, 20 + battery_height + 70))
+
+        if research_capsule and research_capsule['collected']:
+            status_font = pygame.font.Font(None, 24)
+            status_text = status_font.render("CÁPSULA COLETADA", True, (0, 255, 100))
+            screen.blit(status_text, (20, 20 + battery_height + 40))
+
+            pulse = abs(math.sin(pygame.time.get_ticks() * 0.005))
+            icon_color = (int(100 + 155 * pulse), int(200 + 55 * pulse), int(80 + 100 * pulse))
+            primitives.drawCircle(screen, 10, 20 + battery_height + 48, 4, icon_color)
+
+            center_font = pygame.font.Font(None, 48)
+            return_text = center_font.render("RETORNE À BASE!", True, (255, 200, 50))
+            text_rect = return_text.get_rect(center=(WIDTH // 2, 60))
+
+            bg_rect = text_rect.inflate(20, 10)
+            bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+            bg_surface.fill((20, 30, 50))
+            bg_surface.set_alpha(int(180 + 50 * pulse))
+            screen.blit(bg_surface, bg_rect.topleft)
+            screen.blit(return_text, text_rect)
+
+            if is_in_base(sub_x, sub_y):
+                game_state = GAME_STATE_VICTORY
+                victory_start_time = pygame.time.get_ticks()
+
+        elapsed = pygame.time.get_ticks() - mission_start_time
+        if elapsed < SHOW_MISSION_DURATION_MS:
+            draw_center_overlay(
+                screen,
+                [
+                    ("OBJETIVO", True),
+                    ("ENCONTRE A CÁPSULA DE PESQUISA", True),
+                    ("Setas: mover | ESPAÇO: sonar", False),
+                ],
+                mission_big_font,
+                mission_small_font,
+                elapsed,
+                SHOW_MISSION_DURATION_MS
+            )
 
     if SHOW_FPS:
         pygame.display.set_caption(f"Echoes of the Deep | FPS: {int(clock.get_fps())}")
