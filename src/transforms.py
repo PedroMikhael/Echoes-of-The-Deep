@@ -44,3 +44,18 @@ def apply_transform(points, matrix):
         new_y = matrix[1][0]*vec[0] + matrix[1][1]*vec[1] + matrix[1][2]*vec[2]
         new_points.append((new_x, new_y))
     return new_points
+
+def get_rotation_around_point_matrix(angle_degrees, cx, cy):
+    """
+    Cria matriz de rotação em torno de um ponto arbitrário (cx, cy).
+    Processo: T(-cx,-cy) -> R(angle) -> T(cx,cy)
+    1. Translada o ponto de rotação para a origem
+    2. Rotaciona
+    3. Translada de volta para a posição original
+    """
+    to_origin = get_translation_matrix(-cx, -cy)
+    rotation = get_rotation_matrix(angle_degrees)
+    back = get_translation_matrix(cx, cy)
+    
+    temp = mat_mul(rotation, to_origin)
+    return mat_mul(back, temp)
