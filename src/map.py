@@ -188,7 +188,9 @@ def get_all_map_zones():
         gerar_magmaZone(),
         gerar_SegundoPercurso(),
         gerar_ArenaInimigos(),
-        gerar_CorredorArenaParaObjeto()
+        gerar_CorredorArenaParaObjeto(),
+        caminhoerrado_inicial(),
+        gerar_caminho_errado(),
     ]
 
 
@@ -216,30 +218,3 @@ def is_point_in_map(x, y):
         if point_in_polygon(x, y, zone):
             return True
     return False
-'''
-def spawn_zone():
-    return (250, 100)   #coordenadas x e y do centro da zona de spawn
-
-
-# Definição das zonas do mapa
-def getZone():
-    return {
-        "safe": SAFE_ZONE,
-        "magma": MAGMA_ZONE,
-        "nest": NEST_ZONE,
-        "goal": GOAL_ZONE
-    }
-
-
-def getGoalZone():
-    return GOAL_ZONE
-
-def getMagmaZone():
-    return MAGMA_ZONE
-
-def getSafeZone():
-    return SAFE_ZONE
-
-def getNestZone(): 
-    return NEST_ZONE
-'''

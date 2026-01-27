@@ -245,6 +245,7 @@ while True:
                         create_water_bomb(800, 250, 0.35),
                         create_water_bomb(950, 270, 0.35),
                         create_water_bomb(1650, 850, 0.35),
+                        
                     ]
 
                     giant_tentacles = create_giant_tentacles(1100, 900, 0.5)
