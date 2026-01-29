@@ -45,53 +45,74 @@ def update_water_bomb(bomb, bounds_height, is_in_map_func=None):
 
 
 def get_bomb_body_points(bomb):
-    pulse = 1 + math.sin(bomb['time'] * 2) * 0.03
     scale = bomb.get('scale', 1.0)
-    
+    radius = 28 * scale
     points = []
-    num_points = 24
-    width = 25 * pulse * scale
-    height = 35 * pulse * scale
-    
+    num_points = 32
+
     for i in range(num_points):
         angle = (i / num_points) * math.pi * 2
-        px = width * math.cos(angle)
-        py = height * math.sin(angle)
-        points.append((px, py))
-    
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+        points.append((x, y))
+
     return points
+
+
+def draw_metal_shading(surface, center, radius, base_color):
+    cx, cy = center
+
+    for r in range(radius, 0, -2):
+        factor = r / radius
+        shade = (
+            min(255, int(base_color[0] * factor)),
+            min(255, int(base_color[1] * factor)),
+            min(255, int(base_color[2] * factor))
+        )
+        drawCircle(surface, cx, cy, r, shade)
+
 
 
 def get_bomb_spikes(bomb):
     spikes = []
-    num_spikes = 8
-    pulse = 1 + math.sin(bomb['time'] * 2) * 0.03
     scale = bomb.get('scale', 1.0)
-    base_radius = 30 * pulse * scale
-    spike_length = 15 * pulse * scale
-    
+    num_spikes = 6
+    base_radius = 28 * scale
+    spike_length = 10 * scale
+    spike_width = 6 * scale
+
     for i in range(num_spikes):
         angle = (i / num_spikes) * math.pi * 2
-        
+
         base_x = base_radius * math.cos(angle)
         base_y = base_radius * math.sin(angle)
-        
+
         tip_x = (base_radius + spike_length) * math.cos(angle)
         tip_y = (base_radius + spike_length) * math.sin(angle)
-        
-        side_angle = math.pi / 12
-        left_x = base_radius * math.cos(angle - side_angle)
-        left_y = base_radius * math.sin(angle - side_angle)
-        right_x = base_radius * math.cos(angle + side_angle)
-        right_y = base_radius * math.sin(angle + side_angle)
-        
-        spikes.append({
-            'tip': (tip_x, tip_y),
-            'left': (left_x, left_y),
-            'right': (right_x, right_y)
-        })
-    
+
+        left_x = base_x + spike_width * math.cos(angle + math.pi/2)
+        left_y = base_y + spike_width * math.sin(angle + math.pi/2)
+        right_x = base_x + spike_width * math.cos(angle - math.pi/2)
+        right_y = base_y + spike_width * math.sin(angle - math.pi/2)
+
+        spikes.append([(left_x, left_y), (tip_x, tip_y), (right_x, right_y)])
+
     return spikes
+
+def get_bomb_rivets(bomb):
+    rivets = []
+    scale = bomb.get('scale', 1.0)
+    radius = 20 * scale
+    num = 8
+
+    for i in range(num):
+        angle = (i / num) * math.pi * 2
+        x = radius * math.cos(angle)
+        y = radius * math.sin(angle)
+        rivets.append((x, y))
+
+    return rivets
+
 
 
 def get_bomb_bubbles(bomb):
@@ -124,17 +145,25 @@ def draw_water_bomb(surface, bomb, body_color, spike_color, highlight_color):
     translation_matrix = get_translation_matrix(x, y)
     matrix = mat_mul(translation_matrix, rotation_matrix)
     
-    body_points = get_bomb_body_points(bomb)
-    transformed_body = apply_transform(body_points, matrix)
-    drawPolygon(surface, transformed_body, body_color)
-    scanline_fill(surface, transformed_body, body_color)
+    radius = int(28 * bomb.get('scale', 1.0))
+    center = apply_transform([(0, 0)], matrix)[0]
+    draw_metal_shading(surface, (int(center[0]), int(center[1])), radius, body_color)
+
     
     spikes = get_bomb_spikes(bomb)
     for spike in spikes:
-        spike_points = [spike['left'], spike['tip'], spike['right']]
-        transformed_spike = apply_transform(spike_points, matrix)
-        drawPolygon(surface, transformed_spike, spike_color)
-        scanline_fill(surface, transformed_spike, spike_color)
+        transformed = apply_transform(spike, matrix)
+        drawPolygon(surface, transformed, spike_color)
+        scanline_fill(surface, transformed, spike_color)
+
+    rivets = get_bomb_rivets(bomb)
+    for r in rivets:
+        pos = apply_transform([r], matrix)[0]
+        drawCircle(surface, int(pos[0]), int(pos[1]), 3, (80, 80, 80))
+
+    highlight = apply_transform([(-10, -10)], matrix)[0]
+    drawCircle(surface, int(highlight[0]), int(highlight[1]), 6, highlight_color)
+
     
     bubbles = get_bomb_bubbles(bomb)
     for bubble in bubbles:
