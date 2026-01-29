@@ -41,19 +41,22 @@ def update_sonar(sonar, x, y):
     sonar['waves'] = [w for w in sonar['waves'] if w['alpha'] > 0]
 
 
-def draw_sonar(surface, sonar, color):
-    base_radius = 50
-    
+def draw_sonar(surface, sonar, color, camera_x, camera_y):
     for wave in sonar['waves']:
-        scale_matrix = get_scale_matrix(wave['scale'], wave['scale'])
-        current_radius = int(base_radius * scale_matrix[0][0])
-        r = int(color[0] * wave['alpha'])
-        g = int(color[1] * wave['alpha'])
-        b = int(color[2] * wave['alpha'])
-        
-        wave_color = (max(0, r), max(0, g), max(0, b))
-        
-        drawCircle(surface, int(wave['x']), int(wave['y']), current_radius, wave_color)
+        sx = wave['x'] - camera_x
+        sy = wave['y'] - camera_y
+
+        radius = int(50 * wave['scale'])
+        alpha = max(0, min(1, wave['alpha']))
+
+        wave_color = (
+            int(color[0] * alpha),
+            int(color[1] * alpha),
+            int(color[2] * alpha)
+        )
+
+        if radius > 0:
+            drawCircle(surface, int(sx), int(sy), radius, wave_color)
 
 
 def get_submarine_parts():
