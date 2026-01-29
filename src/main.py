@@ -578,28 +578,29 @@ while True:
         obj_render = hud_font.render(obj_text, True, (230, 230, 230))
         screen.blit(obj_render, (20, 20 + battery_height + 70))
 
-        ## minimapa
-        minimap_x = WIDTH - 250
-        minimap_y = 20
-        minimap_w = 230
-        minimap_h = 160
-        
-        # Passar apenas cápsulas não coletadas para o minimapa
-        uncollected_capsules = [cap for cap in research_capsules if not cap['collected']]
-        objects_to_draw = {
-            'base': BASE_POS,
-            'capsules': uncollected_capsules,
-            'sonar': sonar
-        }
-        
-        minimap.draw_minimap(
-            screen, 
-            minimap_x, minimap_y, minimap_w, minimap_h,
-            get_all_map_zones(),
-            (sub_x, sub_y),
-            MAP_WIDTH, MAP_HEIGHT,
-            objects_to_draw
-        )
+        ## minimapa - só aparece quando o sonar está ativo
+        if sonar['active']:
+            minimap_x = WIDTH - 250
+            minimap_y = 20
+            minimap_w = 230
+            minimap_h = 160
+            
+            # Passar apenas cápsulas não coletadas para o minimapa
+            uncollected_capsules = [cap for cap in research_capsules if not cap['collected']]
+            objects_to_draw = {
+                'base': BASE_POS,
+                'capsules': uncollected_capsules,
+                'sonar': sonar
+            }
+            
+            minimap.draw_minimap(
+                screen, 
+                minimap_x, minimap_y, minimap_w, minimap_h,
+                get_all_map_zones(),
+                (sub_x, sub_y),
+                MAP_WIDTH, MAP_HEIGHT,
+                objects_to_draw
+            )
 
         # Mostrar progresso quando há cápsulas coletadas
         if collected_count > 0 and collected_count < total_capsules:
