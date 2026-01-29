@@ -528,8 +528,8 @@ while True:
                 if check_capsule_collision(sub_x, sub_y, capsule):
                     collect_capsule(capsule)
 
-        update_sonar(sonar, WIDTH // 2, HEIGHT // 2)
-        draw_sonar(screen, sonar, SONAR_COLOR)
+        update_sonar(sonar, sub_x, sub_y)
+        draw_sonar(screen, sonar, SONAR_COLOR,camera_x,camera_y)
 
         for b in bubbles:
             b_draw = b.copy()
@@ -581,7 +581,8 @@ while True:
         uncollected_capsules = [cap for cap in research_capsules if not cap['collected']]
         objects_to_draw = {
             'base': BASE_POS,
-            'capsules': uncollected_capsules
+            'capsules': uncollected_capsules,
+            'sonar': sonar
         }
         
         minimap.draw_minimap(
