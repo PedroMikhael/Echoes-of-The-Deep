@@ -7,7 +7,6 @@ def draw_minimap(surface, x, y, width, height,
                  map_width, map_height,
                  objects_dict=None):
 
-    # ================= FUNDO =================
     bg_points = [
         (x, y),
         (x + width, y),
@@ -17,12 +16,10 @@ def draw_minimap(surface, x, y, width, height,
     drawPolygon(surface, bg_points, (200, 200, 200))
     scanline_fill(surface, bg_points, (0, 0, 0))
 
-    # ================= TRANSFORMAÇÃO =================
     janela = (0, 0, map_width, map_height)
     viewport = (x, y, x + width, y + height)
     transform = get_window_to_viewport_matrix_pygame(janela, viewport)
 
-    # ================= ZONAS DO MAPA =================
     for zone in map_zones:
         minimap_zone = apply_transform(zone, transform)
         minimap_zone = [
@@ -34,21 +31,18 @@ def draw_minimap(surface, x, y, width, height,
         if len(minimap_zone) >= 3:
             scanline_fill(surface, minimap_zone, (40, 60, 100))
 
-    # ================= SONAR =================
     if objects_dict and 'sonar' in objects_dict:
         sonar = objects_dict['sonar']
 
-        # posição atual do PLAYER no minimapa
         player_mm = apply_transform([player_pos], transform)[0]
         pmx, pmy = int(player_mm[0]), int(player_mm[1])
 
         if not (x <= pmx <= x + width and y <= pmy <= y + height):
             return
 
-        # escala mundo → minimapa
         scale = min(width / map_width, height / map_height)
 
-        base_radius = 50  # MESMO valor do draw_sonar
+        base_radius = 50
 
         for wave in sonar.get('waves', []):
             world_radius = base_radius * wave['scale']
@@ -65,24 +59,20 @@ def draw_minimap(surface, x, y, width, height,
             drawCircle(surface, pmx, pmy, radius, color)
 
 
-    # ================= PLAYER =================
     player_transformed = apply_transform([player_pos], transform)[0]
     px, py = int(player_transformed[0]), int(player_transformed[1])
 
     if x <= px <= x + width and y <= py <= y + height:
         drawCircle(surface, px, py, 3, (255, 255, 0))
 
-    # ================= OBJETOS =================
     if not objects_dict:
         return
 
-    # Base
     if 'base' in objects_dict:
         bx, by = objects_dict['base']
         bt = apply_transform([(bx, by)], transform)[0]
         drawCircle(surface, int(bt[0]), int(bt[1]), 4, (0, 255, 0))
 
-    # Cápsulas
     if 'capsules' in objects_dict:
         for cap in objects_dict['capsules']:
             if cap and not cap.get('collected', False):

@@ -16,7 +16,6 @@ def getPixel(surface, x_pos, y_pos):
         return None
 
 def DrawLineBresenham(surface, x0, y0, x1, y1, color):
-    # Converte para inteiros
     x0, y0, x1, y1 = int(x0), int(y0), int(x1), int(y1)
     
     steep = abs(y1 - y0) > abs(x1 - x0)
@@ -83,7 +82,6 @@ def drawEllipse(surface, center_x, center_y, rx, ry, color):
     dx = 2 * ry * ry * x
     dy = 2 * rx * rx * y
 
-    # Region 1
     while dx < dy:
         drawEllipsePixels(surface, center_x, center_y, x, y, color)
         if d1 < 0:
@@ -97,7 +95,6 @@ def drawEllipse(surface, center_x, center_y, rx, ry, color):
             dy -= 2 * rx * rx
             d1 += dx - dy + (ry * ry)
 
-    # Region 2
     d2 = ((ry * ry) * ((x + 0.5) * (x + 0.5))) + ((rx * rx) * ((y - 1) * (y - 1))) - (rx * rx * ry * ry)
     
     while y >= 0:
@@ -318,9 +315,6 @@ def scanline_texture(superficie, pontos, uvs, textura):
                     setPixel(superficie, x, y, cor)
 
 
-# =====================================================
-# Cohen-Sutherland (recorte de linhas)
-# =====================================================
 INSIDE = 0
 LEFT   = 1
 RIGHT  = 2
@@ -332,7 +326,7 @@ def codigo_regiao(x, y, xmin, ymin, xmax, ymax):
     code = INSIDE
     if x < xmin: code |= LEFT
     elif x > xmax: code |= RIGHT
-    if y < ymin: code |= TOP      # y cresce para baixo
+    if y < ymin: code |= TOP
     elif y > ymax: code |= BOTTOM
     return code
 
@@ -346,10 +340,10 @@ def cohen_sutherland(x0, y0, x1, y1, xmin, ymin, xmax, ymax):
 
     while True:
         if not (c0 | c1):
-            return True, x0, y0, x1, y1  # totalmente visível
+            return True, x0, y0, x1, y1
 
         if c0 & c1:
-            return False, None, None, None, None  # totalmente fora
+            return False, None, None, None, None
 
         c_out = c0 if c0 else c1
 

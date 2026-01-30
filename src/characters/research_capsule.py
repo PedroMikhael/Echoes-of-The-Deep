@@ -10,13 +10,13 @@ from transforms import (
 
 
 
-CAPSULE_BODY = (50, 55, 65)          # Cinza escuro metálico
-CAPSULE_BODY_LIGHT = (70, 75, 85)    # Cinza mais claro para detalhes
-CAPSULE_ACCENT = (40, 45, 55)        # Cinza escuro para linhas
-CAPSULE_LIGHT_OFF = (80, 30, 30)     # Vermelho apagado
-CAPSULE_LIGHT_ON = (255, 80, 50)     # Vermelho/laranja brilhante
-CAPSULE_GLOW = (255, 120, 80)        # Glow da luz
-BARNACLE_COLOR = (90, 100, 80)       # Cracas/coral
+CAPSULE_BODY = (50, 55, 65)
+CAPSULE_BODY_LIGHT = (70, 75, 85)
+CAPSULE_ACCENT = (40, 45, 55)
+CAPSULE_LIGHT_OFF = (80, 30, 30)
+CAPSULE_LIGHT_ON = (255, 80, 50)
+CAPSULE_GLOW = (255, 120, 80)
+BARNACLE_COLOR = (90, 100, 80)
 
 
 def create_research_capsule(x, y, scale=0.5):
@@ -204,22 +204,18 @@ def draw_research_capsule(surface, capsule):
             int(CAPSULE_LIGHT_OFF[2] + (CAPSULE_LIGHT_ON[2] - CAPSULE_LIGHT_OFF[2]) * light_intensity),
         )
         
-        # Desenha a luz com borda
         drawCircle(surface, int(light_x), int(light_y), scaled_radius + 2, CAPSULE_ACCENT)
         drawCircle(surface, int(light_x), int(light_y), scaled_radius, light_color)
         
-        # Brilho interno quando acesa
         if light_intensity > 0.5:
             inner_radius = max(1, int(scaled_radius * 0.5))
             drawCircle(surface, int(light_x), int(light_y), inner_radius, CAPSULE_GLOW)
     
-    # Cracas
     for cx, cy, radius in parts['barnacles']:
         barnacle_x, barnacle_y = transform_point(cx, cy, matrix)
         scaled_radius = max(1, int(radius * capsule['scale']))
         drawCircle(surface, int(barnacle_x), int(barnacle_y), scaled_radius, BARNACLE_COLOR)
     
-    # Rebites
     for cx, cy, radius in parts['rivets']:
         rivet_x, rivet_y = transform_point(cx, cy, matrix)
         scaled_radius = max(1, int(radius * capsule['scale']))
@@ -235,7 +231,6 @@ def check_capsule_collision(sub_x, sub_y, capsule, collision_radius=50):
     dy = sub_y - capsule['y']
     distance = math.sqrt(dx * dx + dy * dy)
     
-    # Raio de colisão escalado
     capsule_radius = 60 * capsule['scale']
     
     return distance < (collision_radius + capsule_radius)

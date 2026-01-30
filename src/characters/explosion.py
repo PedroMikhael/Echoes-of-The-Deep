@@ -52,22 +52,30 @@ class ExplosionFragment:
     def alive(self):
         return self.life > 0
 
-def draw_explosion(surface, explosion):
+def draw_explosion(surface, explosion, camera_x=0, camera_y=0):
+    """Desenha a explosão na tela com offset da câmera."""
+    screen_x = explosion['x'] - camera_x
+    screen_y = explosion['y'] - camera_y
+    
     if explosion['frame'] < 8:
         drawCircle(
             surface,
-            int(explosion['x']),
-            int(explosion['y']),
+            int(screen_x),
+            int(screen_y),
             explosion['frame'] * 6,
             (255, 240, 200)
         )
 
     for p in explosion['particles']:
-        drawCircle(surface, int(p.x), int(p.y), p.radius, (255, 150, 50))
+        px = p.x - camera_x
+        py = p.y - camera_y
+        drawCircle(surface, int(px), int(py), p.radius, (255, 150, 50))
 
     for f in explosion['fragments']:
         rotated = apply_transform(f.points, get_rotation_matrix(f.rotation))
-        transformed = apply_transform(rotated, get_translation_matrix(f.x, f.y))
+        fx = f.x - camera_x
+        fy = f.y - camera_y
+        transformed = apply_transform(rotated, get_translation_matrix(fx, fy))
  
         drawPolygon(surface, transformed, (160, 160, 160))
         scanline_fill(surface, transformed, (160, 160, 160))

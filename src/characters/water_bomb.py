@@ -28,18 +28,14 @@ def update_water_bomb(bomb, bounds_height, is_in_map_func=None):
     bomb['wobble_phase'] += 0.05
     bomb['rotation'] += bomb['rotation_speed']
     
-    # Movimento flutuante lateral
     new_x = bomb['x'] + math.sin(bomb['wobble_phase']) * 0.5
     
-    # Movimento vertical oscilante (flutua para cima e para baixo)
     new_y = bomb['y'] + math.sin(bomb['time']) * 0.8
     
-    # Só move se a nova posição está dentro do mapa
     if is_in_map_func is None or is_in_map_func(new_x, new_y):
         bomb['x'] = new_x
         bomb['y'] = new_y
     elif is_in_map_func is not None:
-        # Se saiu do mapa, tenta só o movimento X ou Y separadamente
         if is_in_map_func(new_x, bomb['y']):
             bomb['x'] = new_x
         if is_in_map_func(bomb['x'], new_y):

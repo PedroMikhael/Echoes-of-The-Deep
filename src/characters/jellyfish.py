@@ -30,8 +30,7 @@ def update_jellyfish(jf, bounds_width, bounds_height, is_in_map_func=None):
     if jf['direction_timer'] >= jf['direction_interval']:
         jf['direction_timer'] = 0
         jf['direction_interval'] = random.randint(120, 240)
-        # Tenta encontrar um novo alvo dentro do mapa
-        for _ in range(10):  # Tenta 10 vezes
+        for _ in range(10):
             margin = 100
             new_target_x = random.randint(margin, bounds_width - margin)
             new_target_y = random.randint(margin, bounds_height - margin)
@@ -47,12 +46,10 @@ def update_jellyfish(jf, bounds_width, bounds_height, is_in_map_func=None):
     if dist > 5:
         new_x = jf['x'] + (dx / dist) * jf['speed']
         new_y = jf['y'] + (dy / dist) * jf['speed']
-        # Só move se a nova posição está dentro do mapa
         if is_in_map_func is None or is_in_map_func(new_x, new_y):
             jf['x'] = new_x
             jf['y'] = new_y
     
-    # Movimento de flutuação também verifica o mapa
     float_y = jf['y'] + math.sin(jf['time']) * 0.3
     if is_in_map_func is None or is_in_map_func(jf['x'], float_y):
         jf['y'] = float_y

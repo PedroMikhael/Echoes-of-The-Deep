@@ -22,11 +22,9 @@ def get_flashlight_cone(sub_x, sub_y, angle, length=230, spread=30):
     """
     rad = math.radians(angle)
     
-    # Ponto de origem (frente do submarino)
     origin_x = sub_x
     origin_y = sub_y
     
-    # Pontos das extremidades do cone
     left_angle = rad - math.radians(spread)
     right_angle = rad + math.radians(spread)
     
@@ -62,15 +60,11 @@ def apply_darkness_overlay(screen, cone_points, width, height, darkness_alpha=23
         width, height: Dimensões da tela
         darkness_alpha: Opacidade da escuridão (0-255)
     """
-    # Criar surface de escuridão
     darkness = pygame.Surface((width, height), pygame.SRCALPHA)
     darkness.fill((0, 0, 0, darkness_alpha))
     
-    # Converter pontos para inteiros
     cone_int = [(int(p[0]), int(p[1])) for p in cone_points]
     
-    # Preencher o cone com transparente usando scanline (usa setPixel internamente)
-    # Implementação inline do scanline_fill para cor transparente
     points = cone_int
     ys = [p[1] for p in points]
     y_min = max(0, int(min(ys)))
@@ -106,10 +100,8 @@ def apply_darkness_overlay(screen, cone_points, width, height, darkness_alpha=23
                 x_end = min(width - 1, int(round(intersections_x[i + 1])))
                 
                 for x in range(x_start, x_end + 1):
-                    # Usa set_at (equivalente ao setPixel) para transparência
                     darkness.set_at((x, y), transparent)
     
-    # Aplicar overlay
     screen.blit(darkness, (0, 0))
 
 
@@ -144,7 +136,6 @@ def draw_flashlight_with_clipping(screen, objects_to_draw, cone_points, width, h
             x0, y0 = points[i]
             x1, y1 = points[(i + 1) % n]
             
-            # Aplicar Cohen-Sutherland para recortar a linha
             visible, rx0, ry0, rx1, ry1 = cohen_sutherland(
                 x0, y0, x1, y1,
                 window[0], window[1], window[2], window[3]

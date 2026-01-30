@@ -120,6 +120,11 @@ propeller_angle = 0
 propeller_speed = 15
 SUB_SCALE = 0.5
 
+
+damage_cooldown = 0
+DAMAGE_COOLDOWN_TIME = 240
+damage_flash = 0
+
 camera_x = 0
 camera_y = 0
 
@@ -299,19 +304,11 @@ while True:
                     jellyfishes = [
                         create_jellyfish(450, 780, 0.3),
                         create_jellyfish(600, 700, 0.3),
-                        create_jellyfish(850, 250, 0.25),
-                        create_jellyfish(1000, 250, 0.25),
-                        create_jellyfish(1100, 820, 0.3),
                         create_jellyfish(1250, 850, 0.3),
                     ]
 
                     water_bombs = [
                         create_water_bomb(550, 750, 0.35),
-                        create_water_bomb(800, 250, 0.35),
-                        create_water_bomb(950, 270, 0.35),
-                        create_water_bomb(1650, 850, 0.35),
-                        create_water_bomb(100, 700, 0.35),
-                        create_water_bomb(150, 200, 0.35),
                         create_water_bomb(250, 200, 0.35),
                         create_water_bomb(300, 700, 0.35),
                     ]
@@ -320,10 +317,9 @@ while True:
                     sonar = init_sonar()
                     battery = submarine_battery()
                     
-                    # Duas cápsulas de pesquisa
                     research_capsules = [
-                        create_research_capsule(1750, 850, 0.4),   # Cápsula no corredor final
-                        create_research_capsule(450, 200, 0.4),    # Cápsula no topo do arco
+                        create_research_capsule(1750, 850, 0.4),
+                        create_research_capsule(450, 200, 0.4),
                     ]
 
                 elif action == "INSTRUCOES":
@@ -439,22 +435,30 @@ while True:
         keys = pygame.key.get_pressed()
         is_moving = False
 
+        current_speed = sub_speed
+        if giant_tentacles:
+            dx_tent = sub_x - giant_tentacles['x']
+            dy_tent = sub_y - giant_tentacles['y']
+            dist_tent = math.sqrt(dx_tent * dx_tent + dy_tent * dy_tent)
+            if dist_tent < 200:
+                current_speed = sub_speed * 0.4
+        
         if keys[pygame.K_LEFT]:
             sub_angle -= rotation_speed
         if keys[pygame.K_RIGHT]:
             sub_angle += rotation_speed
         if keys[pygame.K_UP]:
             rad = math.radians(sub_angle)
-            new_x = sub_x + math.cos(rad) * sub_speed
-            new_y = sub_y + math.sin(rad) * sub_speed
+            new_x = sub_x + math.cos(rad) * current_speed
+            new_y = sub_y + math.sin(rad) * current_speed
             if is_point_in_map(new_x, new_y):
                 sub_x = new_x
                 sub_y = new_y
                 is_moving = True
         if keys[pygame.K_DOWN]:
             rad = math.radians(sub_angle)
-            new_x = sub_x - math.cos(rad) * sub_speed
-            new_y = sub_y - math.sin(rad) * sub_speed
+            new_x = sub_x - math.cos(rad) * current_speed
+            new_y = sub_y - math.sin(rad) * current_speed
             if is_point_in_map(new_x, new_y):
                 sub_x = new_x
                 sub_y = new_y
@@ -492,6 +496,9 @@ while True:
 
         draw_base_marker(screen, BASE_POS[0], BASE_POS[1], camera_x, camera_y)
 
+        if damage_cooldown > 0:
+            damage_cooldown -= 1
+        
         for jf in jellyfishes:
             jf_screen_x = jf['x'] - camera_x
             jf_screen_y = jf['y'] - camera_y
@@ -500,11 +507,21 @@ while True:
                 dx = jf['x'] - sub_x
                 dy = jf['y'] - sub_y
                 distance = math.sqrt(dx * dx + dy * dy)
-                collision_radius = 60 + (50 * SUB_SCALE) 
+                jf_scale = jf.get('scale', 1.0)
+                collision_radius = (30 * jf_scale) + (50 * SUB_SCALE)
                 
-                if distance < collision_radius:
-                    apply_damage(battery, 10)
-                    impact_sound.play()
+                if distance < collision_radius and damage_cooldown == 0:
+                    apply_damage(battery, 8)
+                    damage_cooldown = DAMAGE_COOLDOWN_TIME
+                    damage_flash = 15
+                    
+                    if distance > 0:
+                        knockback_x = -(dx / distance) * 40
+                        knockback_y = -(dy / distance) * 40
+                        if is_point_in_map(sub_x + knockback_x, sub_y + knockback_y):
+                            sub_x += knockback_x
+                            sub_y += knockback_y
+                
                 jf_copy = jf.copy()
                 jf_copy['x'] = jf_screen_x
                 jf_copy['y'] = jf_screen_y
@@ -520,11 +537,26 @@ while True:
             sub_radius = 50 * SUB_SCALE 
             if distance <= (bomb_radius + sub_radius):
                 bomb['active'] = False
+                
+                if distance > 0:
+                    knockback_force = 80
+                    knockback_x = -(dx / distance) * knockback_force
+                    knockback_y = -(dy / distance) * knockback_force
+                    new_sub_x = sub_x + knockback_x
+                    new_sub_y = sub_y + knockback_y
+                    if is_point_in_map(new_sub_x, new_sub_y):
+                        sub_x = new_sub_x
+                        sub_y = new_sub_y
+                    else:
+                        if is_point_in_map(sub_x + knockback_x, sub_y):
+                            sub_x = sub_x + knockback_x
+                        if is_point_in_map(sub_x, sub_y + knockback_y):
+                            sub_y = sub_y + knockback_y
 
             if not bomb.get('active', True):
                 explosions.append(create_explosion(bomb['x'], bomb['y']))
                 impact_sound.play()
-                apply_damage(battery, 10)
+                apply_damage(battery, 15)
                 water_bombs.remove(bomb)
                 continue
 
@@ -540,14 +572,7 @@ while True:
         for explosion in explosions[:]:
             alive = update_explosion(explosion)
 
-            draw_explosion(
-                screen,
-                {
-                    **explosion,
-                    'x': explosion['x'] - camera_x,
-                    'y': explosion['y'] - camera_y
-                }
-            )
+            draw_explosion(screen, explosion, camera_x, camera_y)
 
             if not alive:
                 explosions.remove(explosion)
@@ -564,7 +589,6 @@ while True:
         }
         draw_giant_tentacles(screen, tentacles_copy, TENTACLE_COLOR)
 
-        # Cápsulas de pesquisa
         for capsule in research_capsules:
             if not capsule['collected']:
                 update_research_capsule(capsule)
@@ -600,11 +624,19 @@ while True:
             SUB_SCALE
         )
 
-        # =====================================================
-        # Lanterna - Aplicar escuridão fora do cone de luz
-        # =====================================================
         cone_points = flashlight.get_flashlight_cone(WIDTH // 2, HEIGHT // 2, sub_angle)
         flashlight.apply_darkness_overlay(screen, cone_points, WIDTH, HEIGHT)
+
+        if damage_flash > 0:
+            flash_alpha = int((damage_flash / 15) * 100)
+            flash_surface = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            flash_surface.fill((255, 0, 0, flash_alpha))
+            screen.blit(flash_surface, (0, 0))
+            
+            shake_x = random.randint(-3, 3)
+            shake_y = random.randint(-3, 3)
+            
+            damage_flash -= 1
 
         
         update_battery(battery)
@@ -617,7 +649,6 @@ while True:
         depth = sub_y
         draw_depth(screen, depth, 20, 20 + battery_height + 10)
 
-        # Contagem de cápsulas
         collected_count = sum(1 for cap in research_capsules if cap['collected'])
         total_capsules = len(research_capsules)
         
@@ -628,14 +659,12 @@ while True:
         obj_render = hud_font.render(obj_text, True, (230, 230, 230))
         screen.blit(obj_render, (20, 20 + battery_height + 70))
 
-        ## minimapa - só aparece quando o sonar está ativo
         if sonar['active']:
             minimap_x = WIDTH - 250
             minimap_y = 20
             minimap_w = 230
             minimap_h = 160
             
-            # Passar apenas cápsulas não coletadas para o minimapa
             uncollected_capsules = [cap for cap in research_capsules if not cap['collected']]
             objects_to_draw = {
                 'base': BASE_POS,
@@ -652,7 +681,6 @@ while True:
                 objects_to_draw
             )
 
-        # Mostrar progresso quando há cápsulas coletadas
         if collected_count > 0 and collected_count < total_capsules:
             status_font = pygame.font.Font(None, 24)
             status_text = status_font.render(f"CÁPSULA {collected_count}/{total_capsules} COLETADA", True, (0, 255, 100))
@@ -674,7 +702,6 @@ while True:
             screen.blit(bg_surface, bg_rect.topleft)
             screen.blit(find_text, text_rect)
 
-        # Vitória quando todas as cápsulas são coletadas
         if collected_count == total_capsules:
             game_state = GAME_STATE_VICTORY
             victory_start_time = pygame.time.get_ticks()

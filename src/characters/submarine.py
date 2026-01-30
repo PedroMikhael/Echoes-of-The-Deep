@@ -170,7 +170,6 @@ def get_transform_matrix(x, y, angle, scale=1.0):
     scale_mat = get_scale_matrix(scale, scale)
     rotation = get_rotation_matrix(angle)
     translation = get_translation_matrix(x, y)
-    # Primeiro escala, depois rotaciona, depois translada
     temp = mat_mul(rotation, scale_mat)
     return mat_mul(translation, temp)
 
@@ -350,13 +349,12 @@ def draw_battery(surface, battery, x, y):
     
     segments_on = int((battery['charge'] / 100) * num_segments + 0.5)
     
-    # Cor baseada na carga
     if battery['charge'] > 50:
-        color = (0, 180, 80)  # Verde
+        color = (0, 180, 80)
     elif battery['charge'] > 25:
-        color = (220, 180, 0)  # Amarelo
+        color = (220, 180, 0)
     else:
-        color = (200, 50, 50)  # Vermelho
+        color = (200, 50, 50)
     
     for i in range(num_segments):
         segment_index = num_segments - 1 - i 
@@ -374,7 +372,6 @@ def draw_battery(surface, battery, x, y):
     
     drawPolygon(surface, body, (60, 60, 60))
     
-    # Desenha a porcentagem ao lado da bateria
     font = pygame.font.Font(None, 32)
     percent_text = f"{int(battery['charge'])}%"
     text_surface = font.render(percent_text, True, color)
