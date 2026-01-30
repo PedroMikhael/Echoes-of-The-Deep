@@ -46,8 +46,8 @@ jogo_pygame/
 
 ```bash
 # Clonar repositório
-git clone https://github.com/PedroMikhael/jogo_pygame.git
-cd jogo_pygame
+git clone https://github.com/PedroMikhael/Echoes-of-The-Deep.git
+cd Echoes-of-The-Deep
 
 # Criar ambiente virtual
 python -m venv venv
