@@ -8,7 +8,7 @@ O jogador controla um submarino de pesquisa nas profundezas do oceano, onde exis
 
 ## Demonstração
 
-**Vídeo de execução**: [demonstração.mp4](demonstração.mp4)
+**Vídeo de execução**: https://youtu.be/WO6NzV6TZ_4
 
 ## Estrutura do Projeto
 
